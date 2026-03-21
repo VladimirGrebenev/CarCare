@@ -1,0 +1,42 @@
+# Исключить служебные и кастомизационные файлы агентов/скиллов
+.agents/
+!.agents/skills/ui-ux-pro-max/SKILL.md
+!.agents/skills/architecture-patterns/SKILL.md
+!.agents/skills/code-review-excellence/SKILL.md
+!.agents/skills/docker-best-practices/SKILL.md
+!.agents/skills/docker-compose-orchestration/SKILL.md
+!.agents/skills/database-schema-design/SKILL.md
+!.agents/skills/golang-patterns/SKILL.md
+!.agents/skills/modern-javascript-patterns/SKILL.md
+!.agents/skills/python-testing-patterns/SKILL.md
+!.agents/skills/rabbitmq-development/SKILL.md
+!.agents/skills/svelte5-best-practices/SKILL.md
+!.agents/skills/product-manager-toolkit/SKILL.md
+!.agents/skills/ci-cd-best-practices/SKILL.md
+!.agents/skills/security-best-practices/SKILL.md
+!.agents/skills/find-skills/SKILL.md
+!.agents/skills/mysql-best-practices/SKILL.md
+!.agents/skills/php-best-practices/SKILL.md
+!.agents/skills/vercel-react-best-practices/SKILL.md
+
+.github/
+!.github/workflows/
+!.github/README.md
+
+# Исключить временные и системные файлы
+*.swp
+*.swo
+*.bak
+*.tmp
+.DS_Store
+node_modules/
+.env
+.env.*
+.idea/
+.vscode/
+__pycache__/
+*.pyc
+
+# Исключить кастомные файлы агентов
+.github/agents/
+skills-lock.json
