@@ -1,0 +1,450 @@
+info:
+  title: CarCare API
+  version: 0.1.0
+  description: OpenAPI spec for CarCare backend
+servers:
+  - url: http://localhost:8080
+paths:
+  /cars:
+    get:
+      summary: List all cars
+      responses:
+        '200':
+          description: OK
+  /users:
+    get:
+      summary: List all users
+      operationId: listUsers
+      tags: [users]
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '500':
+          description: Internal server error
+    post:
+      summary: Create a new user
+      operationId: createUser
+      tags: [users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid input
+        '409':
+          description: User with this email already exists
+        '500':
+          description: Internal server error
+    get:
+      summary: List all users
+      operationId: listUsers
+      tags: [users]
+      responses:
+        '200':
+          description: List of users
+
+openapi: 3.0.0
+info:
+  title: CarCare API
+  version: 0.2.0
+  description: OpenAPI spec for CarCare backend (auth)
+servers:
+  - url: http://localhost:8080
+paths:
+  /auth/register:
+    post:
+      summary: Register new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '201':
+          description: Registered
+        '400':
+          description: Invalid input
+        '409':
+          description: Email exists
+  /auth/confirm:
+    post:
+      summary: Confirm email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+      responses:
+        '200':
+          description: Email confirmed
+        '400':
+          description: Invalid token
+  /auth/login:
+    post:
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: JWT tokens
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+        '401':
+          description: Invalid credentials
+  /auth/forgot:
+    post:
+      summary: Forgot password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+      responses:
+        '200':
+          description: Email sent
+        '404':
+          description: Not found
+  /auth/reset:
+    post:
+      summary: Reset password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                new_password:
+                  type: string
+      responses:
+        '200':
+          description: Password reset
+        '400':
+          description: Invalid token
+  /auth/oauth/yandex:
+    post:
+      summary: OAuth Yandex
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+      responses:
+        '200':
+          description: JWT tokens
+        '401':
+          description: Invalid code
+  /auth/oauth/google:
+    post:
+      summary: OAuth Google
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+      responses:
+        '200':
+          description: JWT tokens
+        '401':
+          description: Invalid code
+  /auth/refresh:
+    post:
+      summary: Refresh JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: New JWT tokens
+        '401':
+          description: Invalid token
+  /auth/logout:
+    post:
+      summary: Logout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+      responses:
+        '200':
+          description: Logged out
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '500':
+          description: Internal server error
+    /users/{id}:
+      get:
+        summary: Get user by ID
+        operationId: getUser
+        tags: [users]
+        parameters:
+          - name: id
+            in: path
+            required: true
+            schema:
+              type: string
+        responses:
+          '200':
+            description: User found
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/User'
+          '404':
+            description: User not found
+          '500':
+            description: Internal server error
+      put:
+        summary: Update user
+        operationId: updateUser
+        tags: [users]
+        parameters:
+          - name: id
+            in: path
+            required: true
+            schema:
+              type: string
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserUpdateRequest'
+        responses:
+          '200':
+            description: User updated
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/User'
+          '400':
+            description: Invalid input
+          '404':
+            description: User not found
+          '500':
+            description: Internal server error
+      delete:
+        summary: Delete user
+        operationId: deleteUser
+        tags: [users]
+        parameters:
+          - name: id
+            in: path
+            required: true
+            schema:
+              type: string
+        responses:
+          '204':
+            description: User deleted
+          '404':
+            description: User not found
+          '500':
+            description: Internal server error
+  components:
+    schemas:
+      User:
+        type: object
+        properties:
+          id:
+            type: string
+          email:
+            type: string
+            format: email
+          name:
+            type: string
+          role:
+            type: string
+            enum: [user, admin]
+        required: [id, email, name, role]
+      UserCreateRequest:
+        type: object
+        properties:
+          email:
+            type: string
+            format: email
+          name:
+            type: string
+          role:
+            type: string
+            enum: [user, admin]
+        required: [email, name, role]
+      UserUpdateRequest:
+        type: object
+        properties:
+          email:
+            type: string
+            format: email
+          name:
+            type: string
+          role:
+            type: string
+            enum: [user, admin]
+        required: [email, name, role]
+  /fuel:
+    get:
+      summary: List all fuel events
+      responses:
+        '200':
+          description: OK
+  /maintenance:
+    get:
+      summary: List all maintenance events
+      responses:
+        '200':
+          description: OK
+  /fines:
+    get:
+      summary: List all fines
+      responses:
+        '200':
+          description: OK
+  /reports:
+    get:
+      summary: List all reports
+      responses:
+        '200':
+          description: OK
+
+# Интеграционные сервисы
+  /integration/gosuslugi/check-fine:
+    post:
+      summary: Проверить штраф по номеру автомобиля
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                carNumber:
+                  type: string
+      responses:
+        '200':
+          description: Результат проверки
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hasFine:
+                    type: boolean
+  /integration/maps/route:
+    post:
+      summary: Получить маршрут между точками
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                from:
+                  type: string
+                to:
+                  type: string
+      responses:
+        '200':
+          description: Маршрут
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  route:
+                    type: string
+  /integration/payment/pay-fine:
+    post:
+      summary: Оплатить штраф
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fineId:
+                  type: string
+                amount:
+                  type: number
+      responses:
+        '200':
+          description: Результат оплаты
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  paymentId:
+                    type: string

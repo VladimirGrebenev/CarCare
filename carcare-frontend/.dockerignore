@@ -1,0 +1,15 @@
+# Frontend .dockerignore
+.git
+.gitignore
+.vscode
+.idea
+*.log
+*.test
+*.out
+node_modules
+.env
+.env.*
+coverage/
+dist/
+build/
+docs/

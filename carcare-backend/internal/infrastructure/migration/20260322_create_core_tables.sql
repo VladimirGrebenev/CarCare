@@ -1,0 +1,48 @@
+-- Migration: Create users table
+CREATE TABLE IF NOT EXISTS users (
+    id UUID PRIMARY KEY,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    name VARCHAR(255) NOT NULL,
+    role VARCHAR(50) NOT NULL
+);
+
+-- Migration: Create cars table
+CREATE TABLE IF NOT EXISTS cars (
+    id UUID PRIMARY KEY,
+    brand VARCHAR(100) NOT NULL,
+    model VARCHAR(100) NOT NULL,
+    year INT NOT NULL,
+    vin VARCHAR(100) NOT NULL UNIQUE
+);
+
+-- Migration: Create fuel_events table
+CREATE TABLE IF NOT EXISTS fuel_events (
+    id UUID PRIMARY KEY,
+    car_id UUID NOT NULL REFERENCES cars(id) ON DELETE CASCADE,
+    volume NUMERIC(10,2) NOT NULL,
+    price NUMERIC(10,2) NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    date DATE NOT NULL,
+    CONSTRAINT idx_fuel_events_car_id_date UNIQUE(car_id, date)
+);
+CREATE INDEX IF NOT EXISTS idx_fuel_events_car_id ON fuel_events(car_id);
+
+-- Migration: Create maintenance_events table
+CREATE TABLE IF NOT EXISTS maintenance_events (
+    id UUID PRIMARY KEY,
+    car_id UUID NOT NULL REFERENCES cars(id) ON DELETE CASCADE,
+    type VARCHAR(100) NOT NULL,
+    date DATE NOT NULL,
+    cost NUMERIC(10,2) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_maintenance_events_car_id ON maintenance_events(car_id);
+
+-- Migration: Create fines table
+CREATE TABLE IF NOT EXISTS fines (
+    id UUID PRIMARY KEY,
+    car_id UUID NOT NULL REFERENCES cars(id) ON DELETE CASCADE,
+    amount NUMERIC(10,2) NOT NULL,
+    type VARCHAR(100) NOT NULL,
+    date DATE NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_fines_car_id ON fines(car_id);

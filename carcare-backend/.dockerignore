@@ -1,0 +1,17 @@
+# Backend .dockerignore
+.git
+.gitignore
+.vscode
+.idea
+*.log
+*.test
+*.out
+__pycache__
+*.pyc
+.env
+.env.*
+node_modules
+coverage/
+dist/
+build/
+docs/

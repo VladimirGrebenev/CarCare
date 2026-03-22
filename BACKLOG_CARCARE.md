@@ -43,7 +43,7 @@
   - **Ответственные:** javascript-expert, ui-ux-pro-max
 
 ### Epic 4: CI/CD, тесты, документация
-- **Tech Task:** Настроить CI/CD pipeline, покрыть тестами основные сценарии, подготовить документацию.
+- **Tech Task:** Настроить CI/CD pipeline, покрыть тестами основные сценарии, подготовить документацию. Фронтенд реализовать на Svelte 5.x, SvelteKit 2.x, Vite 8.x, Node.js 20.19+, Vitest 4.x, Playwright, @sveltejs/vite-plugin-svelte.
   - **Acceptance Criteria:**
     - Все тесты проходят
     - Сборка apk
@@ -51,7 +51,7 @@
   - **Ответственные:** docker-expert, golang-expert, javascript-expert, python-expert
 
 ### Epic 5: Генерация apk для ручной установки
-- **Tech Task:** Сборка apk через TWA/Bubblewrap, ручная установка.
+- **Tech Task:** Сборка apk через TWA/Bubblewrap, ручная установка. Использовать актуальные версии Svelte 5.x, SvelteKit 2.x, Vite 8.x, Node.js 20.19+, Vitest 4.x, Playwright, @sveltejs/vite-plugin-svelte для PWA.
   - **Acceptance Criteria:**
     - Apk доступен для тестирования
     - Инструкции по установке

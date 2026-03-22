@@ -1,0 +1,77 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: ./carcare-backend
+      dockerfile: Dockerfile
+    image: carcare-backend:dev
+    container_name: carcare-backend
+    env_file:
+      - ./carcare-backend/.env
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health" ]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+    volumes:
+      - ./carcare-backend:/app
+    restart: unless-stopped
+    networks:
+      - carcare
+
+  db:
+    image: postgres:15
+    container_name: carcare-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: carcare
+    ports:
+      - "5432:5432"
+    volumes:
+      - carcare-db-data:/var/lib/postgresql/data
+    networks:
+      - carcare
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build:
+      context: ./carcare-frontend
+      dockerfile: Dockerfile
+    image: carcare-frontend:dev
+    container_name: carcare-frontend
+    env_file:
+      - ./carcare-frontend/.env
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000" ]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+    volumes:
+      - ./carcare-frontend:/app
+    restart: unless-stopped
+    networks:
+      - carcare
+    depends_on:
+      backend:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+
+networks:
+  carcare:
+    driver: bridge
+
+volumes:
+  carcare-db-data:
