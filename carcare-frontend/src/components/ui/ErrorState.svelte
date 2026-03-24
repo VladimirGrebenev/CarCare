@@ -1,12 +1,28 @@
 <script lang="ts">
-  let { message = 'Произошла ошибка', icon = null, children, onRetry = null } = $props();
+  import type { Snippet } from 'svelte';
+  import type { HTMLAttributes } from 'svelte/elements';
+
+  type Props = HTMLAttributes<HTMLDivElement> & {
+    children?: Snippet;
+    message?: string;
+    icon?: Snippet | null;
+    onRetry?: (() => void) | null;
+  };
+
+  let {
+    children = null,
+    message = 'Произошла ошибка',
+    icon = null,
+    onRetry = null,
+    class: className = ''
+  }: Props = $props();
 </script>
-<div class="error-state glassmorphism" role="alert">
+<div class={`error-state glassmorphism ${className}`} role="alert">
   {#if icon}
     <div class="error-icon">{@render icon()}</div>
   {/if}
   <div class="error-message">{message}</div>
-  {@render children()}
+  {@render children?.()}
   {#if onRetry}
     <button class="retry-btn" onclick={onRetry}>Повторить</button>
   {/if}

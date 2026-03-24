@@ -44,13 +44,6 @@
     }
   }
 
-  function handleAddCar(car) {
-    // TODO: отправить на backend
-    user = { ...user, cars: [...user.cars, car] };
-    toast = { open: true, message: 'Авто добавлено', type: 'success' };
-    showAddCar = false;
-  }
-
   onMount(fetchProfile);
 </script>
 
@@ -168,7 +161,7 @@
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
 }
-.profile-car-card {
+:global(.profile-car-card) {
   min-width: 0;
   padding: 1rem 1.2rem;
   border-radius: 1rem;

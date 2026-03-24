@@ -35,7 +35,7 @@ export async function fetchFuelHistory(filters = {}) {
   // Преобразуем фильтры в query string
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([key, val]) => {
-    if (val !== undefined && val !== null && val !== '') params.append(key, val);
+    if (val !== undefined && val !== null && val !== '') params.append(key, String(val));
   });
   const res = await fetch(`/api/fuel?${params.toString()}`, { credentials: 'include' });
   if (!res.ok) throw new Error('Ошибка загрузки заправок');
@@ -79,7 +79,7 @@ export async function fetchMaintenanceHistory(filters = {}) {
   // Преобразуем фильтры в query string
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([key, val]) => {
-    if (val !== undefined && val !== null && val !== '') params.append(key, val);
+    if (val !== undefined && val !== null && val !== '') params.append(key, String(val));
   });
   const res = await fetch(`/api/maintenance?${params.toString()}`, { credentials: 'include' });
   if (!res.ok) throw new Error('Ошибка загрузки ТО');
@@ -122,7 +122,7 @@ export async function deleteMaintenance(id) {
 export async function fetchFines(filters = {}) {
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([key, val]) => {
-    if (val !== undefined && val !== null && val !== '') params.append(key, val);
+    if (val !== undefined && val !== null && val !== '') params.append(key, String(val));
   });
   const res = await fetch(`/api/fines?${params.toString()}`, { credentials: 'include' });
   if (!res.ok) throw new Error('Ошибка загрузки штрафов');
@@ -175,6 +175,19 @@ export async function login(email: string, password: string) {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || 'Ошибка авторизации');
+  }
+  return res.json(); // { token, user }
+}
+
+export async function register(email: string, password: string) {
+  const res = await fetch('/api/auth/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Ошибка регистрации');
   }
   return res.json(); // { token, user }
 }

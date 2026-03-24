@@ -1,5 +1,5 @@
 <script lang="ts">
-  let { title = '', children } = $props();
+  export let title: string = '';
   import Sidebar from '../navigation/Sidebar.svelte';
 </script>
 <div class="sidebar-layout">
@@ -8,7 +8,9 @@
     {#if title}
       <header class="sidebar-header"><h1>{title}</h1></header>
     {/if}
-    <section class="sidebar-content">{@render children()}</section>
+    <section class="sidebar-content">
+      <slot />
+    </section>
   </main>
 </div>
 <style>

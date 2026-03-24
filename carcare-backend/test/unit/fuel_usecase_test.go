@@ -2,17 +2,19 @@ package unit
 
 import (
 	"testing"
+
 	"github.com/VladimirGrebenev/CarCare-backend/internal/domain/fuel"
 	"github.com/VladimirGrebenev/CarCare-backend/internal/usecase"
 )
 
+type mockFuelRepo struct{}
 
 func (m *mockFuelRepo) AddFuelEvent(e fuel.FuelEvent) error { return nil }
 func (m *mockFuelRepo) GetFuelEvent(id string) (fuel.FuelEvent, error) {
 	return fuel.FuelEvent{ID: id, CarID: "1", Volume: 40, Price: 2000, Type: "AI-95", Date: "2026-03-22"}, nil
 }
 func (m *mockFuelRepo) UpdateFuelEvent(e fuel.FuelEvent) error { return nil }
-func (m *mockFuelRepo) DeleteFuelEvent(id string) error { return nil }
+func (m *mockFuelRepo) DeleteFuelEvent(id string) error        { return nil }
 func (m *mockFuelRepo) ListFuelEvents() ([]fuel.FuelEvent, error) {
 	return []fuel.FuelEvent{{ID: "1", CarID: "1", Volume: 40, Price: 2000, Type: "AI-95", Date: "2026-03-22"}}, nil
 }

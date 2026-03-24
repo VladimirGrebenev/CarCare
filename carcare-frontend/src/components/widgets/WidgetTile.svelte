@@ -1,14 +1,35 @@
 <script lang="ts">
-  let { title = '', icon = null, value = '', children, onClick = null, className = '' } = $props();
+  import type { Snippet } from 'svelte';
+
+  export let title: string = '';
+  export let icon: Snippet | null = null;
+  export let value: string = '';
+  export let onClick: (() => void) | null = null;
+  export let className: string = '';
+  export let children: Snippet | null = null;
+
+  function handleKeydown(event: KeyboardEvent) {
+    if (!onClick) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onClick();
+    }
+  }
 </script>
-<div class="widget-tile glassmorphism {className}" tabindex="0" role="button" onclick={onClick}>
+<div
+  class="widget-tile glassmorphism {className}"
+  tabindex="0"
+  role="button"
+  onclick={onClick}
+  onkeydown={handleKeydown}
+>
   {#if icon}
     <div class="widget-icon">{@render icon()}</div>
   {/if}
   <div class="widget-content">
     <div class="widget-title">{title}</div>
     <div class="widget-value">{value}</div>
-    {@render children()}
+    {@render children?.()}
   </div>
 </div>
 <style>

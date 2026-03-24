@@ -1,7 +1,5 @@
 // src/stores/reports.ts
-import { $state } from 'svelte/store';
-
-export const reportsStore = $state({
+export const reportsStore = {
   items: [],
   loading: false,
   error: null,
@@ -37,4 +35,4 @@ export const reportsStore = $state({
       this.error = e instanceof Error ? e.message : 'Ошибка экспорта';
     }
   }
-});
+};

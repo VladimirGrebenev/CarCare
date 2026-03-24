@@ -6,20 +6,29 @@
   import Loader from '../../components/ui/Loader.svelte';
   import ErrorState from '../../components/ui/ErrorState.svelte';
   import EmptyState from '../../components/ui/EmptyState.svelte';
+
   import { onMount } from 'svelte';
+
+  import type { Car } from '../../lib/types';
   import { fetchCars } from '../../lib/api';
 
-  let loading = $state(true);
-  let error = $state('');
-  let cars = $state([]);
+
+
+
+
+  let loading: boolean = true;
+  let error: string = '';
+
+  let cars: Car[] = [];
 
   async function loadCars() {
     loading = true;
     error = '';
     try {
-      cars = await fetchCars();
-    } catch (e) {
-      error = e?.message || 'Ошибка загрузки авто';
+      const result = await fetchCars();
+      cars = Array.isArray(result) ? result : [];
+    } catch (e: unknown) {
+      error = e instanceof Error ? e.message : 'Ошибка загрузки авто';
     } finally {
       loading = false;
     }
@@ -37,7 +46,7 @@
     <EmptyState message="Нет добавленных авто" />
   {:else}
     <div class="cars-list">
-      {#each cars as car}
+      {#each cars as car (car.id)}
         <Card className="car-card">
           <div class="car-main">{car.brand} {car.model} ({car.year})</div>
           <div class="car-plate">Гос. номер: {car.plate}</div>

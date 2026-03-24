@@ -6,13 +6,10 @@ import ErrorState from '../../components/ui/ErrorState.svelte';
 import EmptyState from '../../components/ui/EmptyState.svelte';
 import Card from '../../components/ui/Card.svelte';
 import Button from '../../components/ui/Button.svelte';
-import { $state, $effect } from 'svelte';
 
-let filters = $state({ type: '', carId: '' });
-
-$effect(() => {
-  maintenanceStore.load(filters);
-});
+import { onMount } from 'svelte';
+let filters = { type: '', carId: '' };
+onMount(() => maintenanceStore.load(filters));
 
 function handleRetry() {
   maintenanceStore.load(filters);
@@ -30,13 +27,13 @@ function handleAdd() {
     <input
       placeholder="Тип ТО"
       value={filters.type}
-      oninput={e => filters.type = e.target.value}
+      oninput={(e) => (filters.type = (e.currentTarget as HTMLInputElement).value)}
       style="padding:0.5rem;border-radius:0.5rem;border:1px solid #ccc;"
     />
     <input
       placeholder="ID авто"
       value={filters.carId}
-      oninput={e => filters.carId = e.target.value}
+      oninput={(e) => (filters.carId = (e.currentTarget as HTMLInputElement).value)}
       style="padding:0.5rem;border-radius:0.5rem;border:1px solid #ccc;"
     />
     <Button onclick={handleAdd}>Добавить ТО</Button>
@@ -51,7 +48,8 @@ function handleAdd() {
   {:else}
     <div style="display:grid;gap:1rem;">
       {#each maintenanceStore.items as item (item.id)}
-        <Card header={() => `${item.type} (${item.date})`}>
+        <Card>
+          <div style="font-weight:600;">{item.type} ({item.date})</div>
           <div>Машина: {item.carId}</div>
           <div>Стоимость: {item.cost} ₽</div>
         </Card>

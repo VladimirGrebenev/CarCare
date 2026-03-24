@@ -1,3 +1,10 @@
+export interface Car {
+  id: string;
+  brand: string;
+  model: string;
+  year: number;
+  plate: string;
+}
 // src/lib/types.ts
 export interface Fine {
   id: string;
@@ -6,5 +13,5 @@ export interface Fine {
   description: string;
   status: 'paid' | 'unpaid';
   carId?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }

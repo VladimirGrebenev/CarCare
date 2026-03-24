@@ -1,9 +1,27 @@
 <script lang="ts">
-  let { type = 'button', variant = 'primary', disabled = false, loading = false, icon = null, children } = $props();
+  import type { Snippet } from 'svelte';
+  import type { HTMLButtonAttributes } from 'svelte/elements';
+
+  type Props = HTMLButtonAttributes & {
+    children?: Snippet;
+    variant?: string;
+    loading?: boolean;
+    icon?: Snippet | null;
+  };
+
+  let {
+    children = null,
+    type = 'button',
+    variant = 'primary',
+    disabled = false,
+    loading = false,
+    icon = null,
+    class: className = ''
+  }: Props = $props();
 </script>
 <button
   type={type}
-  class="btn {variant} glassmorphism"
+  class={`btn ${variant} glassmorphism ${className}`}
   disabled={disabled || loading}
   aria-busy={loading}
 >
@@ -13,7 +31,7 @@
   {#if icon}
     <span class="btn-icon">{@render icon()}</span>
   {/if}
-  {@render children()}
+  {@render children?.()}
 </button>
 <style>
 .btn {

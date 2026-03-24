@@ -1,11 +1,13 @@
 <script lang="ts">
-  let { title = '', children } = $props();
+  export let title: string = '';
 </script>
 <main class="page-layout">
   {#if title}
     <header class="page-header"><h1>{title}</h1></header>
   {/if}
-  <section class="page-content">{@render children()}</section>
+  <section class="page-content">
+    <slot />
+  </section>
 </main>
 <style>
 .page-layout {

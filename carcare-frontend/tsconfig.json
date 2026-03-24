@@ -1,12 +1,13 @@
 {
+  "extends": "./.svelte-kit/tsconfig.json",
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
       "$lib/*": ["src/lib/*"]
     },
-    "types": ["svelte", "vite/client"],
-    "target": "es2020",
-    "lib": ["es2020", "dom"]
+    "types": ["svelte", "vite/client", "node", "vitest/globals"],
+    "target": "es2022",
+    "lib": ["es2022", "dom", "esnext.disposable"]
   },
   "include": ["src/**/*.ts", "src/**/*.svelte", "tests/**/*.ts"]
 }

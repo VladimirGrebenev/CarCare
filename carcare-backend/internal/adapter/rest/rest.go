@@ -5,7 +5,10 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+
 	"github.com/VladimirGrebenev/CarCare-backend/internal/domain/car"
+	"github.com/VladimirGrebenev/CarCare-backend/internal/domain/fuel"
+	"github.com/VladimirGrebenev/CarCare-backend/internal/domain/user"
 	"github.com/VladimirGrebenev/CarCare-backend/internal/usecase"
 )
 
@@ -231,111 +234,110 @@ func (dto usecaseUserDTO) ToDomain() user.User {
 		Role:  user.Role(dto.Role),
 	}
 }
-}
 
 // FuelHandler реализует CRUD для FuelEvent
 type FuelHandler struct {
-       Add    *usecase.AddFuelEventUsecase
-       Get    *usecase.GetFuelEventUsecase
-       Update *usecase.UpdateFuelEventUsecase
-       Delete *usecase.DeleteFuelEventUsecase
-       List   *usecase.ListFuelEventsUsecase
+	Add    *usecase.AddFuelEventUsecase
+	Get    *usecase.GetFuelEventUsecase
+	Update *usecase.UpdateFuelEventUsecase
+	Delete *usecase.DeleteFuelEventUsecase
+	List   *usecase.ListFuelEventsUsecase
 }
 
 func NewFuelHandler(uc *usecase.UsecaseContainer) *FuelHandler {
-       return &FuelHandler{
-	       Add:    &usecase.AddFuelEventUsecase{Repo: uc.Fuel},
-	       Get:    &usecase.GetFuelEventUsecase{Repo: uc.Fuel},
-	       Update: &usecase.UpdateFuelEventUsecase{Repo: uc.Fuel},
-	       Delete: &usecase.DeleteFuelEventUsecase{Repo: uc.Fuel},
-	       List:   &usecase.ListFuelEventsUsecase{Repo: uc.Fuel},
-       }
+	return &FuelHandler{
+		Add:    &usecase.AddFuelEventUsecase{Repo: uc.Fuel},
+		Get:    &usecase.GetFuelEventUsecase{Repo: uc.Fuel},
+		Update: &usecase.UpdateFuelEventUsecase{Repo: uc.Fuel},
+		Delete: &usecase.DeleteFuelEventUsecase{Repo: uc.Fuel},
+		List:   &usecase.ListFuelEventsUsecase{Repo: uc.Fuel},
+	}
 }
 
 func (h *FuelHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-       w.Header().Set("Content-Type", "application/json")
-       switch r.Method {
-       case http.MethodGet:
-	       id := strings.TrimPrefix(r.URL.Path, "/fuel/")
-	       if id == "" || id == "/fuel" || r.URL.Path == "/fuel" {
-		       h.handleList(w, r)
-	       } else {
-		       h.handleGet(w, r, id)
-	       }
-       case http.MethodPost:
-	       h.handleAdd(w, r)
-       case http.MethodPut:
-	       h.handleUpdate(w, r)
-       case http.MethodDelete:
-	       id := strings.TrimPrefix(r.URL.Path, "/fuel/")
-	       h.handleDelete(w, r, id)
-       default:
-	       http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-       }
+	w.Header().Set("Content-Type", "application/json")
+	switch r.Method {
+	case http.MethodGet:
+		id := strings.TrimPrefix(r.URL.Path, "/fuel/")
+		if id == "" || id == "/fuel" || r.URL.Path == "/fuel" {
+			h.handleList(w, r)
+		} else {
+			h.handleGet(w, r, id)
+		}
+	case http.MethodPost:
+		h.handleAdd(w, r)
+	case http.MethodPut:
+		h.handleUpdate(w, r)
+	case http.MethodDelete:
+		id := strings.TrimPrefix(r.URL.Path, "/fuel/")
+		h.handleDelete(w, r, id)
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
 }
 
 func (h *FuelHandler) handleAdd(w http.ResponseWriter, r *http.Request) {
-       var e fuel.FuelEvent
-       body, err := ioutil.ReadAll(r.Body)
-       if err != nil {
-	       http.Error(w, "invalid body", http.StatusBadRequest)
-	       return
-       }
-       if err := json.Unmarshal(body, &e); err != nil {
-	       http.Error(w, "invalid json", http.StatusBadRequest)
-	       return
-       }
-       if err := h.Add.Execute(e); err != nil {
-	       http.Error(w, err.Error(), http.StatusBadRequest)
-	       return
-       }
-       w.WriteHeader(http.StatusCreated)
-       json.NewEncoder(w).Encode(e)
+	var e fuel.FuelEvent
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "invalid body", http.StatusBadRequest)
+		return
+	}
+	if err := json.Unmarshal(body, &e); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	if err := h.Add.Execute(e); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(e)
 }
 
 func (h *FuelHandler) handleGet(w http.ResponseWriter, r *http.Request, id string) {
-       e, err := h.Get.Execute(id)
-       if err != nil {
-	       http.Error(w, err.Error(), http.StatusNotFound)
-	       return
-       }
-       json.NewEncoder(w).Encode(e)
+	e, err := h.Get.Execute(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	json.NewEncoder(w).Encode(e)
 }
 
 func (h *FuelHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
-       var e fuel.FuelEvent
-       body, err := ioutil.ReadAll(r.Body)
-       if err != nil {
-	       http.Error(w, "invalid body", http.StatusBadRequest)
-	       return
-       }
-       if err := json.Unmarshal(body, &e); err != nil {
-	       http.Error(w, "invalid json", http.StatusBadRequest)
-	       return
-       }
-       if err := h.Update.Execute(e); err != nil {
-	       http.Error(w, err.Error(), http.StatusBadRequest)
-	       return
-       }
-       w.WriteHeader(http.StatusOK)
-       json.NewEncoder(w).Encode(e)
+	var e fuel.FuelEvent
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "invalid body", http.StatusBadRequest)
+		return
+	}
+	if err := json.Unmarshal(body, &e); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	if err := h.Update.Execute(e); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(e)
 }
 
 func (h *FuelHandler) handleDelete(w http.ResponseWriter, r *http.Request, id string) {
-       if err := h.Delete.Execute(id); err != nil {
-	       http.Error(w, err.Error(), http.StatusNotFound)
-	       return
-       }
-       w.WriteHeader(http.StatusNoContent)
+	if err := h.Delete.Execute(id); err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *FuelHandler) handleList(w http.ResponseWriter, r *http.Request) {
-       events, err := h.List.Execute()
-       if err != nil {
-	       http.Error(w, err.Error(), http.StatusInternalServerError)
-	       return
-       }
-       json.NewEncoder(w).Encode(events)
+	events, err := h.List.Execute()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(events)
 }
 
 // MaintenanceHandler handles maintenance-related requests

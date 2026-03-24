@@ -3,13 +3,14 @@ package unit
 import (
 	"context"
 	"testing"
-	"github.com/stretchr/testify/assert"
-	"github.com/VladimirGrebenev/CarCare-backend/internal/usecase"
+
 	"github.com/VladimirGrebenev/CarCare-backend/internal/domain/user"
+	"github.com/VladimirGrebenev/CarCare-backend/internal/usecase"
+	"github.com/stretchr/testify/assert"
 )
 
 type mockUserRepo struct {
-	users map[string]*user.User
+	users map[user.Email]*user.User
 }
 
 func (m *mockUserRepo) Create(ctx context.Context, u *user.User) error {
@@ -19,25 +20,42 @@ func (m *mockUserRepo) Create(ctx context.Context, u *user.User) error {
 	m.users[u.Email] = u
 	return nil
 }
-func (m *mockUserRepo) GetByEmail(ctx context.Context, email string) (*user.User, error) {
+func (m *mockUserRepo) GetByEmail(ctx context.Context, email user.Email) (*user.User, error) {
 	u, ok := m.users[email]
 	if !ok {
 		return nil, user.ErrNotFound
 	}
 	return u, nil
 }
+func (m *mockUserRepo) GetByID(ctx context.Context, id string) (*user.User, error) {
+	return nil, user.ErrNotFound
+}
+func (m *mockUserRepo) Update(ctx context.Context, u *user.User) error {
+	return nil
+}
+func (m *mockUserRepo) Delete(ctx context.Context, id string) error {
+	return nil
+}
+func (m *mockUserRepo) List(ctx context.Context) ([]*user.User, error) {
+	return nil, nil
+}
+
 // ...другие методы user.Repository
 
+func newAuthUsecase(repo *mockUserRepo) *usecase.AuthUsecase {
+	return usecase.NewAuthUsecase(repo, &stubEmailSender{}, &stubJWT{}, &stubLogger{}, &stubSession{})
+}
+
 func TestRegister_Success(t *testing.T) {
-	repo := &mockUserRepo{users: map[string]*user.User{}}
-	uc := usecase.NewAuthUsecase(repo)
+	repo := &mockUserRepo{users: map[user.Email]*user.User{}}
+	uc := newAuthUsecase(repo)
 	err := uc.Register(context.Background(), "test@example.com", "password")
 	assert.NoError(t, err)
 }
 
 func TestRegister_Duplicate(t *testing.T) {
-	repo := &mockUserRepo{users: map[string]*user.User{"test@example.com": {Email: "test@example.com"}}}
-	uc := usecase.NewAuthUsecase(repo)
+	repo := &mockUserRepo{users: map[user.Email]*user.User{user.Email("test@example.com"): {Email: user.Email("test@example.com")}}}
+	uc := newAuthUsecase(repo)
 	err := uc.Register(context.Background(), "test@example.com", "password")
 	assert.Error(t, err)
 }

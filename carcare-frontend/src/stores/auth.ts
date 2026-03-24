@@ -1,10 +1,12 @@
 // src/stores/auth.ts
 import { writable } from 'svelte/store';
 
-export const authToken = writable<string | null>(null);
-export const user = writable<any>(null);
+type AuthUser = Record<string, unknown>;
 
-export function setAuth(token: string, userData: any) {
+export const authToken = writable<string | null>(null);
+export const user = writable<AuthUser | null>(null);
+
+export function setAuth(token: string, userData: AuthUser) {
   authToken.set(token);
   user.set(userData);
   localStorage.setItem('authToken', token);
@@ -23,6 +25,6 @@ export function loadAuth() {
   const userData = localStorage.getItem('user');
   if (token && userData) {
     authToken.set(token);
-    user.set(JSON.parse(userData));
+    user.set(JSON.parse(userData) as AuthUser);
   }
 }

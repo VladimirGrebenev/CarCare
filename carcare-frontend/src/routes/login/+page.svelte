@@ -5,7 +5,6 @@
   import Toast from '../../components/ui/Toast.svelte';
   import Loader from '../../components/ui/Loader.svelte';
   import ErrorState from '../../components/ui/ErrorState.svelte';
-  import { $state, $effect } from 'svelte';
   import { login, oauthLogin } from '../../lib/api';
   import { setAuth } from '../../stores/auth';
 
@@ -45,8 +44,11 @@
       setAuth(data.token, data.user);
       success = true;
       showToast = true;
-    } catch (e) {
-      error = e?.message || 'Ошибка входа. Попробуйте снова.';
+      setTimeout(() => {
+        window.location.href = '/profile';
+      }, 1000);
+    } catch (e: unknown) {
+      error = e instanceof Error ? e.message : 'Ошибка входа. Попробуйте снова.';
     } finally {
       loading = false;
     }
@@ -63,7 +65,7 @@
     }
   });
 </script>
-<Card class="login-card glass minimal dark-mode" aria-label="Login form">
+<Card className="login-card glass minimal dark-mode" aria-label="Login form">
   <form class="login-form" onsubmit={handleLogin} autocomplete="on" novalidate>
     <h2 class="login-title">Вход</h2>
     <Input
@@ -94,7 +96,7 @@
     {/if}
     <Button type="submit" class="login-btn" disabled={loading}>
       {#if loading}
-        <Loader size="20" />
+        <Loader size={20} />
         Входим...
       {:else}
         Войти
@@ -117,7 +119,7 @@
 </Card>
 <style>
 /* Glassmorphism, minimalism, dark mode, accessibility */
-.login-card {
+:global(.login-card) {
   max-width: 370px;
   margin: 4rem auto;
   padding: 2.5rem 2rem 2rem 2rem;
@@ -139,11 +141,11 @@
   margin-bottom: 0.5rem;
   text-align: center;
 }
-.login-input:focus-within {
+:global(.login-input):focus-within {
   outline: 2px solid #00bfae;
   outline-offset: 2px;
 }
-.login-btn {
+:global(.login-btn) {
   margin-top: 0.5rem;
   background: linear-gradient(90deg, #00bfae 0%, #3a86ff 100%);
   color: #fff;
@@ -153,7 +155,7 @@
   font-size: 1.1rem;
   transition: background 0.2s;
 }
-.login-btn:focus {
+:global(.login-btn):focus {
   box-shadow: 0 0 0 3px #00bfae55;
 }
 .oauth-buttons {
@@ -162,7 +164,7 @@
   margin-top: 0.5rem;
   justify-content: center;
 }
-.oauth-btn {
+:global(.oauth-btn) {
   flex: 1;
   min-width: 0;
   background: #23272f;
@@ -176,27 +178,27 @@
   min-height: 44px;
   transition: background 0.2s, border 0.2s;
 }
-.oauth-btn:focus {
+:global(.oauth-btn):focus {
   box-shadow: 0 0 0 3px #3a86ff55;
 }
-.oauth-btn.google {
+:global(.oauth-btn.google) {
   background: #fff;
   color: #222;
   border: 1px solid #e0e0e0;
 }
-.oauth-btn.yandex {
+:global(.oauth-btn.yandex) {
   background: #ffcc00;
   color: #222;
   border: 1px solid #ffe066;
 }
-.login-error {
+:global(.login-error) {
   color: #ff6b6b;
   font-size: 1rem;
   margin-top: -0.5rem;
   margin-bottom: 0.5rem;
   text-align: center;
 }
-.dark-mode {
+:global(.dark-mode) {
   --background: #222831;
   --foreground: #f3f6fa;
   --primary: #00bfae;
@@ -210,7 +212,7 @@
   --button-focus: #00bfae55;
 }
 @media (max-width: 480px) {
-  .login-card {
+  :global(.login-card) {
     padding: 1.2rem 0.5rem;
     margin: 2rem 0.25rem;
   }

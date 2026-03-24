@@ -1,73 +1,14 @@
-
 package unit
 
 import (
 	"testing"
+
 	"github.com/VladimirGrebenev/CarCare-backend/internal/domain/car"
 	"github.com/VladimirGrebenev/CarCare-backend/internal/usecase"
 )
 
-
-type mockCarRepo struct {
-	cars map[string]car.Car
-}
-
-func newMockCarRepo() *mockCarRepo {
-	return &mockCarRepo{cars: make(map[string]car.Car)}
-}
-
-func (m *mockCarRepo) AddCar(c car.Car) error {
-	if _, exists := m.cars[c.ID]; exists {
-		return ErrDuplicateID
-	}
-	m.cars[c.ID] = c
-	return nil
-}
-
-func (m *mockCarRepo) GetCar(id string) (car.Car, error) {
-	c, ok := m.cars[id]
-	if !ok {
-		return car.Car{}, ErrNotFound
-	}
-	return c, nil
-}
-
-func (m *mockCarRepo) UpdateCar(c car.Car) error {
-	if _, ok := m.cars[c.ID]; !ok {
-		return ErrNotFound
-	}
-	m.cars[c.ID] = c
-	return nil
-}
-
-func (m *mockCarRepo) DeleteCar(id string) error {
-	if _, ok := m.cars[id]; !ok {
-		return ErrNotFound
-	}
-	delete(m.cars, id)
-	return nil
-}
-
-func (m *mockCarRepo) ListCars() ([]car.Car, error) {
-	out := make([]car.Car, 0, len(m.cars))
-	for _, c := range m.cars {
-		out = append(out, c)
-	}
-	return out, nil
-}
-
-var (
-	ErrNotFound    = &mockError{"not found"}
-	ErrDuplicateID = &mockError{"duplicate id"}
-)
-
-type mockError struct{ msg string }
-
-func (e *mockError) Error() string { return e.msg }
-
-
 func TestAddCarUsecase_Execute(t *testing.T) {
-	repo := newMockCarRepo()
+	repo := NewMockCarRepo()
 	uc := usecase.AddCarUsecase{Repo: repo}
 	carObj := car.Car{ID: "1", Brand: "TestBrand", Model: "TestModel", Year: 2020, VIN: "VIN123"}
 	err := uc.Execute(carObj)
@@ -82,7 +23,7 @@ func TestAddCarUsecase_Execute(t *testing.T) {
 }
 
 func TestGetCarUsecase_Execute(t *testing.T) {
-	repo := newMockCarRepo()
+	repo := NewMockCarRepo()
 	repo.AddCar(car.Car{ID: "2", Brand: "B", Model: "M", Year: 2021, VIN: "VIN2"})
 	uc := usecase.GetCarUsecase{Repo: repo}
 	c, err := uc.Execute("2")
@@ -92,7 +33,7 @@ func TestGetCarUsecase_Execute(t *testing.T) {
 }
 
 func TestUpdateCarUsecase_Execute(t *testing.T) {
-	repo := newMockCarRepo()
+	repo := NewMockCarRepo()
 	repo.AddCar(car.Car{ID: "3", Brand: "B", Model: "M", Year: 2021, VIN: "VIN3"})
 	uc := usecase.UpdateCarUsecase{Repo: repo}
 	updated := car.Car{ID: "3", Brand: "B2", Model: "M2", Year: 2022, VIN: "VIN3"}
@@ -107,7 +48,7 @@ func TestUpdateCarUsecase_Execute(t *testing.T) {
 }
 
 func TestDeleteCarUsecase_Execute(t *testing.T) {
-	repo := newMockCarRepo()
+	repo := NewMockCarRepo()
 	repo.AddCar(car.Car{ID: "4", Brand: "B", Model: "M", Year: 2021, VIN: "VIN4"})
 	uc := usecase.DeleteCarUsecase{Repo: repo}
 	err := uc.Execute("4")
@@ -121,7 +62,7 @@ func TestDeleteCarUsecase_Execute(t *testing.T) {
 }
 
 func TestListCarsUsecase_Execute(t *testing.T) {
-	repo := newMockCarRepo()
+	repo := NewMockCarRepo()
 	repo.AddCar(car.Car{ID: "5", Brand: "B", Model: "M", Year: 2021, VIN: "VIN5"})
 	repo.AddCar(car.Car{ID: "6", Brand: "B2", Model: "M2", Year: 2022, VIN: "VIN6"})
 	uc := usecase.ListCarsUsecase{Repo: repo}

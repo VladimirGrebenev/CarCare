@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	repo "home/veneberg/CarCare/carcare-backend/internal/adapter/repository"
+	repo "github.com/VladimirGrebenev/CarCare-backend/internal/adapter/repository"
 )
 
 func TestFineRepository_GetByID_NotImplemented(t *testing.T) {

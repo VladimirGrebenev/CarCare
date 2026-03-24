@@ -4,6 +4,11 @@ import (
 	"errors"
 )
 
+var (
+	ErrAlreadyExists = errors.New("user already exists")
+	ErrNotFound      = errors.New("user not found")
+)
+
 type User struct {
 	ID    string
 	Email Email

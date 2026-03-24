@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+
 	"github.com/VladimirGrebenev/CarCare-backend/internal/domain/user"
 )
 
@@ -40,17 +41,22 @@ type SessionManager interface {
 
 func NewAuthUsecase(userRepo user.Repository, emailSender EmailSender, jwt JWTService, logger Logger, session SessionManager) *AuthUsecase {
 	return &AuthUsecase{
-		 UserRepo:    userRepo,
-		 EmailSender: emailSender,
-		 JWT:         jwt,
-		 Logger:      logger,
-		 Session:     session,
+		UserRepo:    userRepo,
+		EmailSender: emailSender,
+		JWT:         jwt,
+		Logger:      logger,
+		Session:     session,
 	}
 }
 
 func (uc *AuthUsecase) Register(ctx context.Context, email, password string) error {
 	uc.Logger.Info("Register called", email)
-	// ...
+	// Проверка на существование пользователя с таким email
+	existing, _ := uc.UserRepo.GetByEmail(ctx, user.Email(email))
+	if existing != nil {
+		return user.ErrAlreadyExists
+	}
+	// Здесь могла бы быть логика создания пользователя
 	return nil
 }
 

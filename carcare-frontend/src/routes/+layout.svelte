@@ -1,20 +1,24 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import NavBar from '../components/navigation/NavBar.svelte';
   import Sidebar from '../components/navigation/Sidebar.svelte';
-  let isMobile = window.innerWidth < 768;
-  $effect(() => {
-    const handler = () => isMobile = window.innerWidth < 768;
-    window.addEventListener('resize', handler);
-    return () => window.removeEventListener('resize', handler);
+  let { children } = $props();
+  let isMobile = $state(false);
+
+  onMount(() => {
+    const update = () => (isMobile = window.innerWidth < 768);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
   });
 </script>
 <div class="app-layout">
   {#if isMobile}
-    <slot />
+    {@render children()}
     <NavBar />
   {:else}
     <Sidebar />
-    <div class="desktop-content"><slot /></div>
+    <div class="desktop-content">{@render children()}</div>
   {/if}
 </div>
 <style>

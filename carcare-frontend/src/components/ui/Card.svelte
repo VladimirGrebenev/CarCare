@@ -1,11 +1,27 @@
 <script lang="ts">
-  let { children, header = null, footer = null, className = '' } = $props();
+  import type { Snippet } from 'svelte';
+  import type { HTMLAttributes } from 'svelte/elements';
+
+  type Props = HTMLAttributes<HTMLDivElement> & {
+    children?: Snippet;
+    header?: Snippet | null;
+    footer?: Snippet | null;
+    className?: string;
+  };
+
+  let {
+    children = null,
+    header = null,
+    footer = null,
+    className = '',
+    class: classAttr = ''
+  }: Props = $props();
 </script>
-<div class="card glassmorphism {className}">
+<div class={`card glassmorphism ${className} ${classAttr}`}>
   {#if header}
     <div class="card-header">{@render header()}</div>
   {/if}
-  <div class="card-content">{@render children()}</div>
+  <div class="card-content">{@render children?.()}</div>
   {#if footer}
     <div class="card-footer">{@render footer()}</div>
   {/if}

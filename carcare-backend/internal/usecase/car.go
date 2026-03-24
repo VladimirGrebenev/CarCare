@@ -1,13 +1,16 @@
-type AddCarUsecase struct {
-	Repo car.Repository
-}
 package usecase
+
 import (
 	"errors"
 	"fmt"
 	"strings"
+
 	"github.com/VladimirGrebenev/CarCare-backend/internal/domain/car"
 )
+
+type AddCarUsecase struct {
+	Repo car.Repository
+}
 
 // Валидация и доменные правила
 func validateCar(c car.Car) error {

@@ -1,12 +1,26 @@
 <script lang="ts">
-  let { message = 'Нет данных', icon = null, children } = $props();
+  import type { Snippet } from 'svelte';
+  import type { HTMLAttributes } from 'svelte/elements';
+
+  type Props = HTMLAttributes<HTMLDivElement> & {
+    children?: Snippet;
+    message?: string;
+    icon?: Snippet | null;
+  };
+
+  let {
+    children = null,
+    message = 'Нет данных',
+    icon = null,
+    class: className = ''
+  }: Props = $props();
 </script>
-<div class="empty-state glassmorphism">
+<div class={`empty-state glassmorphism ${className}`}>
   {#if icon}
     <div class="empty-icon">{@render icon()}</div>
   {/if}
   <div class="empty-message">{message}</div>
-  {@render children()}
+  {@render children?.()}
 </div>
 <style>
 .empty-state {

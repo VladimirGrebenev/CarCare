@@ -1,5 +1,10 @@
 <script lang="ts">
-  let { icon = null, label = '', onClick = null, className = '' } = $props();
+  import type { Snippet } from 'svelte';
+
+  export let icon: Snippet | null = null;
+  export let label: string = '';
+  export let onClick: (() => void) | null = null;
+  export let className: string = '';
 </script>
 <button class="fab glassmorphism {className}" aria-label={label} onclick={onClick}>
   {#if icon}

@@ -1,5 +1,7 @@
 <script lang="ts">
-  let { size = 32, color = '#7de2fc', className = '' } = $props();
+  export let size: number = 32;
+  export let color: string = '#7de2fc';
+  export let className: string = '';
 </script>
 <div class="loader {className}" style="width:{size}px;height:{size}px;border-top-color:{color};"></div>
 <style>

@@ -1,5 +1,12 @@
 <script lang="ts">
-  let { columns = [], rows = [], emptyText = 'Нет данных', loading = false, error = '', className = '' } = $props();
+  import Loader from './Loader.svelte';
+
+  export let columns: { label: string; key: string }[] = [];
+  export let rows: Array<Record<string, unknown>> = [];
+  export let emptyText: string = 'Нет данных';
+  export let loading: boolean = false;
+  export let error: string = '';
+  export let className: string = '';
 </script>
 <div class="table-wrapper {className}">
   {#if loading}

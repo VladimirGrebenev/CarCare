@@ -1,18 +1,51 @@
 <script lang="ts">
-  let { open = $bindable(false), title = '', onClose = null, children } = $props();
+  import type { Snippet } from 'svelte';
+
+  type Props = {
+    open?: boolean;
+    title?: string;
+    onClose?: (() => void) | null;
+    children?: Snippet;
+  };
+
+  let { open = false, title = '', onClose = null, children = null }: Props = $props();
+
   function handleClose() {
     if (onClose) onClose();
     open = false;
   }
+
+  function handleBackdropKeydown(event: KeyboardEvent) {
+    if (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleClose();
+    }
+  }
+
 </script>
 {#if open}
-  <div class="modal-backdrop" tabindex="-1" aria-modal="true" role="dialog" onclick={handleClose}>
-    <div class="modal glassmorphism" onclick|stopPropagation>
+  <div
+    class="modal-backdrop"
+    tabindex="0"
+    aria-modal="true"
+    role="dialog"
+    onclick={(event) => {
+      if (event.target === event.currentTarget) {
+        handleClose();
+      }
+    }}
+    onkeydown={handleBackdropKeydown}
+  >
+    <div
+      class="modal glassmorphism"
+      role="document"
+      tabindex="-1"
+    >
       <header class="modal-header">
         <h2>{title}</h2>
         <button class="modal-close" aria-label="Close" onclick={handleClose}>&times;</button>
       </header>
-      <div class="modal-content">{@render children()}</div>
+      <div class="modal-content">{@render children?.()}</div>
     </div>
   </div>
 {/if}

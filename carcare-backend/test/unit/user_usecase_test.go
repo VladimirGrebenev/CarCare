@@ -2,12 +2,13 @@ package unit
 
 import (
 	"testing"
+
 	"github.com/VladimirGrebenev/CarCare-backend/internal/domain/user"
 )
 
-type mockUserRepo struct{}
+type mockUserRepo2 struct{}
 
-func (m *mockUserRepo) RegisterUser(u user.User) error {
+func (m *mockUserRepo2) RegisterUser(u user.User) error {
 	return nil
 }
 

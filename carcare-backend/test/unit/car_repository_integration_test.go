@@ -4,15 +4,16 @@ import (
 	"database/sql"
 	"os"
 	"testing"
-	_ "github.com/lib/pq"
+
 	repo "github.com/VladimirGrebenev/CarCare-backend/internal/adapter/repository"
 	"github.com/VladimirGrebenev/CarCare-backend/internal/domain/car"
+	_ "github.com/lib/pq"
 )
 
 func setupTestDB(t *testing.T) *sql.DB {
 	dsn := os.Getenv("CARCARE_TEST_DSN")
 	if dsn == "" {
-		t.Fatal("CARCARE_TEST_DSN not set")
+		t.Skip("CARCARE_TEST_DSN not set, skipping integration test")
 	}
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {

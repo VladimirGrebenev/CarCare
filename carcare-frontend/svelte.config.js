@@ -5,9 +5,6 @@ export default {
     adapter: adapter(),
     paths: {
       base: '',
-    },
-    prerender: {
-      default: true
     }
   }
 };

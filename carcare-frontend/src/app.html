@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    %sveltekit.head%
     <meta name="theme-color" content="#1976d2" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icons/icon-192x192.png" />
@@ -11,7 +12,7 @@
   <body>
     <!-- PWA manifest and favicon already included -->
     <!-- Ensure SvelteKit placeholder is present -->
-    <div id="svelte">%svelte.body%</div>
+    <div id="svelte">%sveltekit.body%</div>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {

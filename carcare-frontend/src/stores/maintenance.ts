@@ -1,9 +1,8 @@
 // src/stores/maintenance.ts
 // Svelte 5 rune store for maintenance data
-import { $state } from 'svelte/store';
 import { fetchMaintenanceHistory, addMaintenance, updateMaintenance, deleteMaintenance } from '../lib/api';
 
-export const maintenanceStore = $state({
+export const maintenanceStore = {
   items: [],
   loading: false,
   error: null,
@@ -59,4 +58,4 @@ export const maintenanceStore = $state({
       this.loading = false;
     }
   }
-});
+};

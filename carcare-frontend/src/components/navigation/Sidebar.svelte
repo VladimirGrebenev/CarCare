@@ -1,6 +1,8 @@
 <script lang="ts">
-  let { active = '', onNavigate = null } = $props();
-  const nav = [
+  export let active: string = '';
+  export let onNavigate: ((path: string) => void) | null = null;
+  type NavItem = { path: string; label: string; icon: string };
+  const nav: NavItem[] = [
     { path: '/', label: 'Главная', icon: '🏠' },
     { path: '/cars', label: 'Машины', icon: '🚗' },
     { path: '/fuel', label: 'Топливо', icon: '⛽' },
@@ -9,20 +11,23 @@
     { path: '/reports', label: 'Отчёты', icon: '📊' },
     { path: '/profile', label: 'Профиль', icon: '👤' }
   ];
-  function go(path) {
+  function go(path: string) {
     if (onNavigate) onNavigate(path);
   }
 </script>
 <aside class="sidebar glassmorphism" aria-label="Боковая навигация">
   {#each nav as item}
     <a
-      href={item.path}
-      class:active={active === item.path}
-      aria-current={active === item.path ? 'page' : undefined}
-      onclick|preventDefault={() => go(item.path)}
+      href={(item as NavItem).path}
+      class:active={active === (item as NavItem).path}
+      aria-current={active === (item as NavItem).path ? 'page' : undefined}
+      onclick={(event: MouseEvent) => {
+        event.preventDefault();
+        go((item as NavItem).path);
+      }}
     >
-      <span class="sidebar-icon">{item.icon}</span>
-      <span class="sidebar-label">{item.label}</span>
+      <span class="sidebar-icon">{(item as NavItem).icon}</span>
+      <span class="sidebar-label">{(item as NavItem).label}</span>
     </a>
   {/each}
 </aside>

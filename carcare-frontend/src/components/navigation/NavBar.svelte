@@ -1,5 +1,6 @@
 <script lang="ts">
-  let { active = '', onNavigate = null } = $props();
+  export let active: string = '';
+  export let onNavigate: ((path: string) => void) | null = null;
   const nav = [
     { path: '/', label: 'Главная', icon: '🏠' },
     { path: '/cars', label: 'Машины', icon: '🚗' },
@@ -19,7 +20,10 @@
       href={item.path}
       class:active={active === item.path}
       aria-current={active === item.path ? 'page' : undefined}
-      onclick|preventDefault={() => go(item.path)}
+      onclick={(event) => {
+        event.preventDefault();
+        go(item.path);
+      }}
     >
       <span class="nav-icon">{item.icon}</span>
       <span class="nav-label">{item.label}</span>

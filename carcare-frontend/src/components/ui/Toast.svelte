@@ -1,13 +1,27 @@
 <script lang="ts">
-  let { message = '', type = 'info', open = $bindable(false), duration = 3000 } = $props();
+  type Props = {
+    message?: string;
+    type?: string;
+    open?: boolean;
+    show?: boolean;
+    duration?: number;
+  };
+
+  let { message = '', type = 'info', open = false, show = false, duration = 3000 }: Props = $props();
+  const visible = $derived(show || open);
+
+  let timer: ReturnType<typeof setTimeout> | undefined;
   $effect(() => {
-    if (open && duration > 0) {
-      const timer = setTimeout(() => open = false, duration);
-      return () => clearTimeout(timer);
+    if (visible && duration > 0) {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        show = false;
+        open = false;
+      }, duration);
     }
   });
 </script>
-{#if open}
+{#if visible}
   <div class="toast {type}" role="status" aria-live="polite">{message}</div>
 {/if}
 <style>

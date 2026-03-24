@@ -21,7 +21,7 @@ export const filteredFuelList = derived([
   fuelList, fuelFilters
 ], ([$fuelList, $fuelFilters]) => {
   if (!$fuelFilters || Object.keys($fuelFilters).length === 0) return $fuelList;
-  return $fuelList.filter((fuel: Record<string, any>) => {
+  return $fuelList.filter((fuel: Record<string, unknown>) => {
     // Fallback for Object.entries and includes
     const entries = Object.entries ? Object.entries($fuelFilters) : Object.keys($fuelFilters).map(key => [key, $fuelFilters[key]]);
     return entries.every(([key, val]) => {
@@ -39,8 +39,8 @@ export async function loadFuel() {
     const filters = get(fuelFilters);
     const data = await fetchFuelHistory(filters);
     fuelList.set(data);
-  } catch (e: any) {
-    fuelError.set(e.message || 'Ошибка загрузки заправок');
+  } catch (e: unknown) {
+    fuelError.set(e instanceof Error ? e.message : 'Ошибка загрузки заправок');
   } finally {
     fuelLoading.set(false);
   }
@@ -52,8 +52,8 @@ export async function createFuel(fuel: Fuel) {
   try {
     const newFuel = await addFuel(fuel);
     fuelList.update(list => [newFuel, ...list]);
-  } catch (e: any) {
-    fuelError.set(e.message || 'Ошибка добавления заправки');
+  } catch (e: unknown) {
+    fuelError.set(e instanceof Error ? e.message : 'Ошибка добавления заправки');
   } finally {
     fuelLoading.set(false);
   }
@@ -65,8 +65,8 @@ export async function editFuel(id: string, fuel: Fuel) {
   try {
     const updated = await updateFuel(id, fuel);
     fuelList.update(list => list.map(f => f.id === id ? updated : f));
-  } catch (e: any) {
-    fuelError.set(e.message || 'Ошибка обновления заправки');
+  } catch (e: unknown) {
+    fuelError.set(e instanceof Error ? e.message : 'Ошибка обновления заправки');
   } finally {
     fuelLoading.set(false);
   }
@@ -78,8 +78,8 @@ export async function removeFuel(id: string) {
   try {
     await deleteFuel(id);
     fuelList.update(list => list.filter(f => f.id !== id));
-  } catch (e: any) {
-    fuelError.set(e.message || 'Ошибка удаления заправки');
+  } catch (e: unknown) {
+    fuelError.set(e instanceof Error ? e.message : 'Ошибка удаления заправки');
   } finally {
     fuelLoading.set(false);
   }
