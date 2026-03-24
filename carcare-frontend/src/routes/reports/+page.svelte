@@ -5,8 +5,14 @@
   import Loader from '../../components/ui/Loader.svelte';
   import Table from '../../components/ui/Table.svelte';
   import { reportsStore } from '../../stores/reports';
+  import { ensureAuthenticated } from '../../lib/authGuard';
+  import { onMount } from 'svelte';
 
   let filters = $state({ period: '', type: '' });
+  
+  onMount(async () => {
+    await ensureAuthenticated();
+  });
 
   $effect(() => {
     reportsStore.load(filters);

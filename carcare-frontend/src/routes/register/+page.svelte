@@ -6,17 +6,16 @@
   import Toast from '../../components/ui/Toast.svelte';
   import Loader from '../../components/ui/Loader.svelte';
   import ErrorState from '../../components/ui/ErrorState.svelte';
+  import { goto } from '$app/navigation';
   import { register } from '../../lib/api';
   import { setAuth } from '../../stores/auth';
-  import { onMount } from 'svelte';
 
-  let email = '';
-  let password = '';
-  let confirmPassword = '';
-  let loading = false;
-  let error = '';
-  let success = false;
-  let showToast = false;
+  let email = $state('');
+  let password = $state('');
+  let confirmPassword = $state('');
+  let loading = $state(false);
+  let error = $state('');
+  let showToast = $state(false);
 
   function validate() {
     if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
@@ -40,13 +39,14 @@
     if (!validate()) return;
     loading = true;
     error = '';
-    success = false;
     showToast = false;
     try {
       const data = await register(email, password);
       setAuth(data.token, data.user);
-      success = true;
       showToast = true;
+      setTimeout(() => {
+        goto('/profile', { replaceState: true });
+      }, 1000);
     } catch (e: unknown) {
       error = e instanceof Error ? e.message : 'Ошибка регистрации. Попробуйте снова.';
     } finally {
@@ -54,13 +54,6 @@
     }
   }
 
-  onMount(() => {
-    if (success) {
-      setTimeout(() => {
-        window.location.href = '/profile';
-      }, 1500);
-    }
-  });
 </script>
 
 <Card>

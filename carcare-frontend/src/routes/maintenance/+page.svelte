@@ -6,10 +6,14 @@ import ErrorState from '../../components/ui/ErrorState.svelte';
 import EmptyState from '../../components/ui/EmptyState.svelte';
 import Card from '../../components/ui/Card.svelte';
 import Button from '../../components/ui/Button.svelte';
+import { ensureAuthenticated } from '../../lib/authGuard';
 
 import { onMount } from 'svelte';
 let filters = { type: '', carId: '' };
-onMount(() => maintenanceStore.load(filters));
+onMount(async () => {
+  await ensureAuthenticated();
+  maintenanceStore.load(filters);
+});
 
 function handleRetry() {
   maintenanceStore.load(filters);

@@ -2,20 +2,22 @@
 
   import Button from '../../components/ui/Button.svelte';
   import { goto } from '$app/navigation';
-  import { loadAuth, user } from '../../stores/auth';
+  import { bootstrapAuth } from '../../stores/auth';
   import { onMount } from 'svelte';
 
-  let isAuthenticated = false;
-
   onMount(() => {
-    loadAuth();
-    const unsub = user.subscribe(u => {
-      isAuthenticated = !!u;
-      if (isAuthenticated) {
-        goto('/profile');
+    let disposed = false;
+
+    (async () => {
+      const isAuthenticated = await bootstrapAuth();
+      if (!disposed && isAuthenticated) {
+        goto('/profile', { replaceState: true });
       }
-    });
-    return unsub;
+    })();
+
+    return () => {
+      disposed = true;
+    };
   });
 
   function handleLogin() {

@@ -8,13 +8,10 @@
   import EmptyState from '../../components/ui/EmptyState.svelte';
 
   import { onMount } from 'svelte';
+  import { ensureAuthenticated } from '../../lib/authGuard';
 
   import type { Car } from '../../lib/types';
   import { fetchCars } from '../../lib/api';
-
-
-
-
 
   let loading: boolean = true;
   let error: string = '';
@@ -28,13 +25,20 @@
       const result = await fetchCars();
       cars = Array.isArray(result) ? result : [];
     } catch (e: unknown) {
-      error = e instanceof Error ? e.message : 'Ошибка загрузки авто';
+      const msg = e instanceof Error ? e.message : 'Ошибка загрузки авто';
+      error = msg;
+      if (msg.includes('авторизац')) {
+        setTimeout(() => ensureAuthenticated(), 1000);
+      }
     } finally {
       loading = false;
     }
   }
 
-  onMount(loadCars);
+  onMount(async () => {
+    await ensureAuthenticated();
+    loadCars();
+  });
 </script>
 
 <PageLayout title="Мои автомобили">

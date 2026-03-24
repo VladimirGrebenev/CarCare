@@ -8,6 +8,7 @@
   import EmptyState from '../../components/ui/EmptyState.svelte';
   import ErrorState from '../../components/ui/ErrorState.svelte';
   import { onMount } from 'svelte';
+  import { ensureAuthenticated } from '../../lib/authGuard';
 
   let loading = $state(true);
   let error = $state('');
@@ -18,13 +19,26 @@
 
   import { fetchProfile as apiFetchProfile, addCar as apiAddCar } from '../../lib/api';
 
+  function normalizeProfile(profile) {
+    if (!profile || typeof profile !== 'object') return null;
+    return {
+      ...profile,
+      cars: Array.isArray(profile.cars) ? profile.cars : []
+    };
+  }
+
   async function fetchProfile() {
     loading = true;
     error = '';
     try {
-      user = await apiFetchProfile();
+      user = normalizeProfile(await apiFetchProfile());
     } catch (e) {
-      error = e?.message || 'Не удалось загрузить профиль';
+      const message = e?.message || 'Не удалось загрузить профиль';
+      error = message;
+      // If auth is no longer valid, redirect to welcome
+      if (message.includes('авторизац')) {
+        setTimeout(() => ensureAuthenticated(), 1000);
+      }
     } finally {
       loading = false;
     }
@@ -44,7 +58,10 @@
     }
   }
 
-  onMount(fetchProfile);
+  onMount(async () => {
+    await ensureAuthenticated();
+    fetchProfile();
+  });
 </script>
 
 <PageLayout title="Профиль">

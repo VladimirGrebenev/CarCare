@@ -63,3 +63,45 @@ func TestCarHandler_BadRequest(t *testing.T) {
 		t.Errorf("expected 400, got %d", w.Code)
 	}
 }
+
+func TestCarHandler_List_Success(t *testing.T) {
+	h := setupCarHandler()
+	_ = h.Add.Execute(car.Car{ID: "1", Brand: "A", Model: "M", Year: 2020, VIN: "VIN1"})
+	_ = h.Add.Execute(car.Car{ID: "2", Brand: "B", Model: "N", Year: 2021, VIN: "VIN2"})
+	req := httptest.NewRequest("GET", "/cars", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var got []car.Car
+	if err := json.NewDecoder(w.Body).Decode(&got); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if len(got) != 2 {
+		t.Errorf("expected 2 cars, got %d", len(got))
+	}
+}
+
+func TestCarHandler_List_EmptyFallback(t *testing.T) {
+	// Create a handler with a failing repository
+	failingRepo := &mockCarRepoWithError{}
+	uc := &usecase.UsecaseContainer{Car: failingRepo}
+	h := rest.NewCarHandler(uc)
+	
+	req := httptest.NewRequest("GET", "/cars", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+	
+	// Should return 200 with empty array, not 500
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var got []car.Car
+	if err := json.NewDecoder(w.Body).Decode(&got); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if got == nil || len(got) != 0 {
+		t.Errorf("expected empty car array, got %v", got)
+	}
+}

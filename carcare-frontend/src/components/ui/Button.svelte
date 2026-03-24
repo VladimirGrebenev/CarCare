@@ -16,7 +16,8 @@
     disabled = false,
     loading = false,
     icon = null,
-    class: className = ''
+    class: className = '',
+    onclick
   }: Props = $props();
 </script>
 <button
@@ -24,6 +25,7 @@
   class={`btn ${variant} glassmorphism ${className}`}
   disabled={disabled || loading}
   aria-busy={loading}
+  onclick={onclick}
 >
   {#if loading}
     <span class="loader"></span>

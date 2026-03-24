@@ -1,4 +1,3 @@
-
 package unit
 
 import "github.com/VladimirGrebenev/CarCare-backend/internal/domain/car"
@@ -59,3 +58,26 @@ var (
 type MockError struct{ msg string }
 
 func (e *MockError) Error() string { return e.msg }
+
+// mockCarRepoWithError always returns an error on any operation
+type mockCarRepoWithError struct{}
+
+func (m *mockCarRepoWithError) AddCar(c car.Car) error {
+	return &MockError{"repo unavailable"}
+}
+
+func (m *mockCarRepoWithError) GetCar(id string) (car.Car, error) {
+	return car.Car{}, &MockError{"repo unavailable"}
+}
+
+func (m *mockCarRepoWithError) UpdateCar(c car.Car) error {
+	return &MockError{"repo unavailable"}
+}
+
+func (m *mockCarRepoWithError) DeleteCar(id string) error {
+	return &MockError{"repo unavailable"}
+}
+
+func (m *mockCarRepoWithError) ListCars() ([]car.Car, error) {
+	return nil, &MockError{"repo unavailable"}
+}

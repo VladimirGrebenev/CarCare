@@ -5,8 +5,10 @@
   import Toast from '../../components/ui/Toast.svelte';
   import Loader from '../../components/ui/Loader.svelte';
   import ErrorState from '../../components/ui/ErrorState.svelte';
+  import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
   import { login, oauthLogin } from '../../lib/api';
-  import { setAuth } from '../../stores/auth';
+  import { bootstrapAuth, setAuth } from '../../stores/auth';
 
   // State
   let email = $state('');
@@ -45,7 +47,7 @@
       success = true;
       showToast = true;
       setTimeout(() => {
-        window.location.href = '/profile';
+        goto('/profile', { replaceState: true });
       }, 1000);
     } catch (e: unknown) {
       error = e instanceof Error ? e.message : 'Ошибка входа. Попробуйте снова.';
@@ -58,6 +60,21 @@
   function handleOAuth(provider: string) {
     oauthLogin(provider);
   }
+
+  onMount(() => {
+    let disposed = false;
+
+    (async () => {
+      const isAuthenticated = await bootstrapAuth();
+      if (!disposed && isAuthenticated) {
+        goto('/profile', { replaceState: true });
+      }
+    })();
+
+    return () => {
+      disposed = true;
+    };
+  });
 
   $effect(() => {
     if (showToast && success) {

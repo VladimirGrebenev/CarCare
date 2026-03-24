@@ -35,21 +35,34 @@ func main() {
 		User:        userRepo,
 		UserService: usecase.NewUserService(userRepo),
 	}
+	authUC := usecase.NewAuthUsecase(userRepo, nil, nil, nil, nil)
 	carHandler := rest.NewCarHandler(uc)
 	userHandler := rest.NewUserHandler(uc)
 	fuelHandler := rest.NewFuelHandler(uc)
+	authHandler := rest.NewAuthHandler(authUC)
 
 	http.HandleFunc("/health", rest.HealthCheckHandler)
 	http.Handle("/cars", carHandler)
 	http.Handle("/cars/", carHandler) // для /cars/{id}
+	http.Handle("/api/cars", rest.AliasPrefixHandler("/api", "", carHandler))
+	http.Handle("/api/cars/", rest.AliasPrefixHandler("/api", "", carHandler))
 	http.Handle("/users", userHandler)
 	http.Handle("/users/", userHandler)
 	http.Handle("/fuel", fuelHandler)
 	http.Handle("/fuel/", fuelHandler)
+	http.Handle("/api/fuel", rest.AliasPrefixHandler("/api", "", fuelHandler))
+	http.Handle("/api/fuel/", rest.AliasPrefixHandler("/api", "", fuelHandler))
 	http.HandleFunc("/maintenance", rest.MaintenanceHandler)
 	http.HandleFunc("/fines", rest.FineHandler)
 	http.HandleFunc("/reports", rest.ReportHandler)
+	http.HandleFunc("/api/maintenance", rest.MaintenanceHandler)
+	http.HandleFunc("/api/fines", rest.FineHandler)
+	http.HandleFunc("/api/reports", rest.ReportHandler)
+	http.HandleFunc("/api/reports/export", rest.ReportHandler)
 	http.HandleFunc("/api/profile", rest.ProfileHandler)
+	http.HandleFunc("/api/auth/login", authHandler.Login)
+	http.HandleFunc("/api/auth/register", authHandler.Register)
+	http.HandleFunc("/api/auth/oauth/", authHandler.OAuthProvider)
 
 	fmt.Println("Listening on :8080...")
 	http.ListenAndServe(":8080", nil)

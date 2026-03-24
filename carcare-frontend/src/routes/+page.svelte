@@ -3,19 +3,23 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { loadAuth, user } from '../stores/auth';
-
-  let isAuthenticated = false;
+  import { bootstrapAuth } from '../stores/auth';
 
   onMount(() => {
-    loadAuth();
-    const unsub = user.subscribe((u) => {
-      isAuthenticated = !!u;
-      if (!isAuthenticated) {
-        goto('/welcome');
+    let disposed = false;
+
+    (async () => {
+      const isAuthenticated = await bootstrapAuth();
+      if (disposed) {
+        return;
       }
-    });
-    return unsub;
+
+      goto(isAuthenticated ? '/profile' : '/welcome', { replaceState: true });
+    })();
+
+    return () => {
+      disposed = true;
+    };
   });
 </script>
 <main><h1>CarCare</h1></main>

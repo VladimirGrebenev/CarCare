@@ -12,11 +12,20 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
+
+	email, ok := validateBearerToken(r.Header.Get("Authorization"))
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "unauthorized"})
+		return
+	}
+
 	profile := map[string]interface{}{
 		"id":    1,
 		"name":  "Test User",
-		"email": "test@example.com",
+		"email": email,
 		"role":  "user",
+		"cars":  []map[string]interface{}{},
 	}
-	json.NewEncoder(w).Encode(profile)
+	_ = json.NewEncoder(w).Encode(profile)
 }
