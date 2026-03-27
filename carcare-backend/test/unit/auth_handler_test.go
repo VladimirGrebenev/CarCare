@@ -37,6 +37,7 @@ func TestRegisterSuccess(t *testing.T) {
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
 		t.Fatalf("failed to decode response body: %v", err)
 	}
+	// После реальной JWT-аутентификации токен содержит JWT, а не пустую строку
 	if _, ok := body["token"]; !ok {
 		t.Errorf("expected token field in response")
 	}
@@ -64,7 +65,11 @@ func TestRegisterMethodNotAllowed(t *testing.T) {
 }
 
 func TestLoginSuccess(t *testing.T) {
-	uc := &usecase.AuthUsecase{Logger: &stubLogger{}}
+	repo := newStubUserRepoWithUser("a@b.com", "123")
+	uc := &usecase.AuthUsecase{
+		UserRepo: repo,
+		Logger:   &stubLogger{},
+	}
 	h := rest.NewAuthHandler(uc)
 	r := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"email":"a@b.com","password":"123"}`))
 	r.Header.Set("Content-Type", "application/json")

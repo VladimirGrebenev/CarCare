@@ -12,7 +12,7 @@ func (e Email) Validate() error {
 		return errors.New("email is required")
 	}
 	// Simple email regex
-	re := regexp.MustCompile(`^[\w._%+-]+@[\w.-]+\\.[a-zA-Z]{2,}$`)
+	re := regexp.MustCompile(`^[\w._%+-]+@[\w.-]+\.[a-zA-Z]{2,}$`)
 	if !re.MatchString(string(e)) {
 		return errors.New("invalid email format")
 	}

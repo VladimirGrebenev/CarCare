@@ -1,8 +1,6 @@
 package rest
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -29,49 +27,6 @@ func NewAuthHandler(uc *usecase.AuthUsecase) *AuthHandler {
 	return &AuthHandler{UC: uc, Logger: uc.Logger}
 }
 
-var (
-	issuedTokens   = map[string]string{}
-	issuedTokensMu sync.RWMutex
-)
-
-func validateBearerToken(authHeader string) (string, bool) {
-	if authHeader == "" {
-		return "", false
-	}
-
-	const prefix = "Bearer "
-	if !strings.HasPrefix(authHeader, prefix) {
-		return "", false
-	}
-
-	token := strings.TrimSpace(strings.TrimPrefix(authHeader, prefix))
-	if token == "" {
-		return "", false
-	}
-
-	issuedTokensMu.RLock()
-	email, ok := issuedTokens[token]
-	issuedTokensMu.RUnlock()
-	if !ok {
-		return "", false
-	}
-
-	return email, true
-}
-
-func issueToken(email string) string {
-	buf := make([]byte, 16)
-	if _, err := rand.Read(buf); err != nil {
-		return ""
-	}
-	token := "carcare-" + hex.EncodeToString(buf)
-
-	issuedTokensMu.Lock()
-	issuedTokens[token] = email
-	issuedTokensMu.Unlock()
-
-	return token
-}
 
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -94,8 +49,14 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token := issueToken(req.Email)
-	if token == "" {
+	token, err := h.UC.Register(r.Context(), req.Email, req.Password)
+	if err != nil {
+		if err.Error() == "user already exists" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusConflict)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "user already exists"})
+			return
+		}
 		writeServerError(w)
 		return
 	}
@@ -134,9 +95,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token := issueToken(req.Email)
-	if token == "" {
-		writeServerError(w)
+	token, err := h.UC.Login(r.Context(), req.Email, req.Password)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "invalid credentials"})
 		return
 	}
 

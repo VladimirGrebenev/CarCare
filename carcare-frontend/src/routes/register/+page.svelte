@@ -59,8 +59,8 @@
 <Card>
   <form onsubmit={handleRegister} aria-label="Регистрация" autocomplete="off">
     <Input label="Email" type="email" bind:value={email} required autocomplete="email" />
-    <Input label="Пароль" type="password" bind:value={password} required autocomplete="new-password" minLength={6} />
-    <Input label="Повторите пароль" type="password" bind:value={confirmPassword} required autocomplete="new-password" minLength={6} />
+    <Input label="Пароль" type="password" bind:value={password} required autocomplete="new-password" inputProps={{ minlength: 6 }} />
+    <Input label="Повторите пароль" type="password" bind:value={confirmPassword} required autocomplete="new-password" inputProps={{ minlength: 6 }} />
     {#if error}
       <ErrorState message={error} />
     {/if}

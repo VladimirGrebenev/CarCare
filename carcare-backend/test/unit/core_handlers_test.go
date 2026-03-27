@@ -7,14 +7,26 @@ import (
 	"testing"
 
 	"github.com/VladimirGrebenev/CarCare-backend/internal/adapter/rest"
+	"github.com/VladimirGrebenev/CarCare-backend/internal/usecase"
 )
+
+// newMockUsecaseContainer returns a UsecaseContainer backed by in-memory mock repos.
+func newMockUsecaseContainer() *usecase.UsecaseContainer {
+	return &usecase.UsecaseContainer{
+		Car:         NewMockCarRepo(),
+		Fuel:        &mockFuelRepo{},
+		Fine:        &mockFineRepo{},
+		Maintenance: &mockMaintenanceRepo{},
+	}
+}
 
 // TestMaintenanceHandler_GET tests the maintenance endpoint
 func TestMaintenanceHandler_GET(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/api/maintenance", nil)
+	req := httptest.NewRequest(http.MethodGet, "/maintenance", nil)
 	w := httptest.NewRecorder()
 
-	rest.MaintenanceHandler(w, req)
+	h := rest.NewMaintenanceHandler(newMockUsecaseContainer())
+	h.ServeHTTP(w, req)
 	resp := w.Result()
 	defer resp.Body.Close()
 
@@ -29,17 +41,15 @@ func TestMaintenanceHandler_GET(t *testing.T) {
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
-	if len(body) != 0 {
-		t.Errorf("expected empty list, got %d items", len(body))
-	}
 }
 
-// TestMaintenanceHandler_MethodNotAllowed tests non-GET methods
+// TestMaintenanceHandler_MethodNotAllowed tests non-supported methods
 func TestMaintenanceHandler_MethodNotAllowed(t *testing.T) {
-	req := httptest.NewRequest(http.MethodPost, "/api/maintenance", nil)
+	req := httptest.NewRequest(http.MethodPatch, "/maintenance", nil)
 	w := httptest.NewRecorder()
 
-	rest.MaintenanceHandler(w, req)
+	h := rest.NewMaintenanceHandler(newMockUsecaseContainer())
+	h.ServeHTTP(w, req)
 	resp := w.Result()
 	defer resp.Body.Close()
 
@@ -50,10 +60,11 @@ func TestMaintenanceHandler_MethodNotAllowed(t *testing.T) {
 
 // TestFineHandler_GET tests the fines endpoint
 func TestFineHandler_GET(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/api/fines", nil)
+	req := httptest.NewRequest(http.MethodGet, "/fines", nil)
 	w := httptest.NewRecorder()
 
-	rest.FineHandler(w, req)
+	h := rest.NewFineHandler(newMockUsecaseContainer())
+	h.ServeHTTP(w, req)
 	resp := w.Result()
 	defer resp.Body.Close()
 
@@ -68,17 +79,15 @@ func TestFineHandler_GET(t *testing.T) {
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
-	if len(body) != 0 {
-		t.Errorf("expected empty list, got %d items", len(body))
-	}
 }
 
-// TestFineHandler_MethodNotAllowed tests non-GET methods
+// TestFineHandler_MethodNotAllowed tests non-supported methods
 func TestFineHandler_MethodNotAllowed(t *testing.T) {
-	req := httptest.NewRequest(http.MethodDelete, "/api/fines", nil)
+	req := httptest.NewRequest(http.MethodPatch, "/fines", nil)
 	w := httptest.NewRecorder()
 
-	rest.FineHandler(w, req)
+	h := rest.NewFineHandler(newMockUsecaseContainer())
+	h.ServeHTTP(w, req)
 	resp := w.Result()
 	defer resp.Body.Close()
 
@@ -89,10 +98,11 @@ func TestFineHandler_MethodNotAllowed(t *testing.T) {
 
 // TestReportHandler_GET tests the reports endpoint
 func TestReportHandler_GET(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/api/reports", nil)
+	req := httptest.NewRequest(http.MethodGet, "/reports", nil)
 	w := httptest.NewRecorder()
 
-	rest.ReportHandler(w, req)
+	h := rest.NewReportHandler(newMockUsecaseContainer())
+	h.ServeHTTP(w, req)
 	resp := w.Result()
 	defer resp.Body.Close()
 
@@ -102,22 +112,15 @@ func TestReportHandler_GET(t *testing.T) {
 	if got := resp.Header.Get("Content-Type"); got != "application/json" {
 		t.Errorf("expected content-type application/json, got %s", got)
 	}
-
-	var body []interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
-		t.Fatalf("failed to decode response: %v", err)
-	}
-	if len(body) != 0 {
-		t.Errorf("expected empty list, got %d items", len(body))
-	}
 }
 
 // TestReportHandler_MethodNotAllowed tests non-GET methods
 func TestReportHandler_MethodNotAllowed(t *testing.T) {
-	req := httptest.NewRequest(http.MethodPut, "/api/reports", nil)
+	req := httptest.NewRequest(http.MethodPut, "/reports", nil)
 	w := httptest.NewRecorder()
 
-	rest.ReportHandler(w, req)
+	h := rest.NewReportHandler(newMockUsecaseContainer())
+	h.ServeHTTP(w, req)
 	resp := w.Result()
 	defer resp.Body.Close()
 

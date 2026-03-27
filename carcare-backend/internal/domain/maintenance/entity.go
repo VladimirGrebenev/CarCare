@@ -1,9 +1,9 @@
 package maintenance
 
 type MaintenanceEvent struct {
-	ID     string
-	CarID  string
-	Type   string
-	Date   string
-	Cost   float64
+	ID    string  `json:"id"`
+	CarID string  `json:"car_id"`
+	Type  string  `json:"type"`
+	Date  string  `json:"date"`
+	Cost  float64 `json:"cost"`
 }

@@ -1,76 +1,117 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import Loader from './Loader.svelte';
 
-  export let columns: { label: string; key: string }[] = [];
-  export let rows: Array<Record<string, unknown>> = [];
-  export let emptyText: string = 'Нет данных';
-  export let loading: boolean = false;
-  export let error: string = '';
-  export let className: string = '';
+  type Column = { label: string; key: string };
+
+  type Props = {
+    columns?: Column[];
+    rows?: Array<Record<string, unknown>>;
+    emptyText?: string;
+    loading?: boolean;
+    error?: string;
+    className?: string;
+    onRowClick?: ((row: Record<string, unknown>) => void) | null;
+    actions?: Snippet<[Record<string, unknown>]> | null;
+  };
+
+  let {
+    columns = [],
+    rows = [],
+    emptyText = 'Нет данных',
+    loading = false,
+    error = '',
+    className = '',
+    onRowClick = null,
+    actions = null
+  }: Props = $props();
 </script>
+
 <div class="table-wrapper {className}">
   {#if loading}
-    <div class="table-loader"><Loader /></div>
+    <div class="table-state"><Loader /></div>
   {:else if error}
-    <div class="table-error" role="alert">{error}</div>
+    <div class="table-state table-error" role="alert">{error}</div>
   {:else if rows.length === 0}
-    <div class="table-empty">{emptyText}</div>
+    <div class="table-state table-empty">{emptyText}</div>
   {:else}
     <table>
       <thead>
         <tr>
           {#each columns as col}
-            <th>{col.label}</th>
+            <th scope="col">{col.label}</th>
           {/each}
+          {#if actions}<th scope="col" class="col-actions">Действия</th>{/if}
         </tr>
       </thead>
       <tbody>
         {#each rows as row}
-          <tr>
+          <tr
+            class:clickable={!!onRowClick}
+            onclick={() => onRowClick?.(row)}
+            onkeydown={(e) => { if (e.key === 'Enter') onRowClick?.(row); }}
+            tabindex={onRowClick ? 0 : undefined}
+            role={onRowClick ? 'button' : undefined}
+          >
             {#each columns as col}
-              <td>{row[col.key]}</td>
+              <td>{row[col.key] ?? '—'}</td>
             {/each}
+            {#if actions}
+              <td class="col-actions" onclick={(e) => e.stopPropagation()}>
+                {@render actions(row)}
+              </td>
+            {/if}
           </tr>
         {/each}
       </tbody>
     </table>
   {/if}
 </div>
+
 <style>
 .table-wrapper {
   width: 100%;
   overflow-x: auto;
-  background: var(--glass-bg);
-  border-radius: 1rem;
-  box-shadow: var(--glass-shadow);
-  padding: 1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--bg-layer);
 }
+
 table {
   width: 100%;
   border-collapse: collapse;
-  color: var(--text);
+  color: var(--text-primary);
+  font-size: 0.9375rem;
 }
-th, td {
+
+thead { background: var(--bg-input); }
+th {
   padding: 0.75rem 1rem;
   text-align: left;
-}
-th {
-  color: var(--accent);
+  font-size: 0.8125rem;
   font-weight: 600;
-  background: rgba(125,226,252,0.08);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
-tr:nth-child(even) {
-  background: rgba(30,30,40,0.04);
+
+td {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border);
+  color: var(--text-primary);
 }
-.table-loader, .table-error, .table-empty {
-  padding: 2rem;
+
+tr.clickable { cursor: pointer; }
+tr.clickable:hover td { background: var(--accent-light); }
+tr:focus-visible td { background: var(--accent-light); }
+
+.col-actions { width: 1%; white-space: nowrap; }
+
+.table-state {
+  padding: 3rem 1rem;
   text-align: center;
-  color: var(--accent);
+  color: var(--text-secondary);
 }
-:global(.dark) .table-wrapper {
-  --glass-bg: rgba(30, 30, 40, 0.7);
-  --glass-shadow: 0 2px 24px 0 rgba(0,0,0,0.18);
-  --text: #fff;
-  --accent: #7de2fc;
-}
+.table-error { color: var(--danger); }
 </style>

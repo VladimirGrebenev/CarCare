@@ -82,8 +82,8 @@
     }
   });
 </script>
-<Card className="login-card glass minimal dark-mode" aria-label="Login form">
-  <form class="login-form" onsubmit={handleLogin} autocomplete="on" novalidate>
+<Card className="login-card glass minimal dark-mode">
+  <form class="login-form" onsubmit={handleLogin} autocomplete="on" novalidate aria-label="Форма входа">
     <h2 class="login-title">Вход</h2>
     <Input
       label="Email"

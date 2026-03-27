@@ -1,11 +1,11 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import type { HTMLAttributes } from 'svelte/elements';
 
-  type Props = HTMLAttributes<HTMLDivElement> & {
+  type Props = {
     children?: Snippet;
     header?: Snippet | null;
     footer?: Snippet | null;
+    class?: string;
     className?: string;
   };
 
@@ -13,11 +13,12 @@
     children = null,
     header = null,
     footer = null,
-    className = '',
-    class: classAttr = ''
+    class: classAttr = '',
+    className = ''
   }: Props = $props();
 </script>
-<div class={`card glassmorphism ${className} ${classAttr}`}>
+
+<div class="card {className} {classAttr}">
   {#if header}
     <div class="card-header">{@render header()}</div>
   {/if}
@@ -26,25 +27,31 @@
     <div class="card-footer">{@render footer()}</div>
   {/if}
 </div>
+
 <style>
 .card {
-  border-radius: 1rem;
-  background: var(--glass-bg);
-  box-shadow: var(--glass-shadow);
-  padding: 1.5rem;
-  color: var(--text);
+  border-radius: var(--radius-lg);
+  background: var(--bg-layer);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  padding: 1.25rem 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  transition: background var(--transition-slow), border-color var(--transition-slow);
 }
-.card-header, .card-footer {
+.card-header {
+  font-size: 1rem;
   font-weight: 600;
-  color: var(--accent);
+  color: var(--text-primary);
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
 }
-:global(.dark) .card {
-  --glass-bg: rgba(30, 30, 40, 0.7);
-  --glass-shadow: 0 2px 24px 0 rgba(0,0,0,0.18);
-  --text: #fff;
-  --accent: #7de2fc;
+.card-content { color: var(--text-primary); }
+.card-footer {
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
 }
 </style>

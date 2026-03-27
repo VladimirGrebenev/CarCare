@@ -1,52 +1,35 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import type { HTMLAttributes } from 'svelte/elements';
 
-  type Props = HTMLAttributes<HTMLDivElement> & {
+  type Props = {
     children?: Snippet;
     message?: string;
     icon?: Snippet | null;
+    class?: string;
   };
 
-  let {
-    children = null,
-    message = 'Нет данных',
-    icon = null,
-    class: className = ''
-  }: Props = $props();
+  let { children = null, message = 'Нет данных', icon = null, class: className = '' }: Props = $props();
 </script>
-<div class={`empty-state glassmorphism ${className}`}>
+
+<div class="empty-state {className}">
   {#if icon}
     <div class="empty-icon">{@render icon()}</div>
   {/if}
-  <div class="empty-message">{message}</div>
+  <p class="empty-message">{message}</p>
   {@render children?.()}
 </div>
+
 <style>
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 2rem 1rem;
-  border-radius: 1rem;
-  background: var(--glass-bg);
-  box-shadow: var(--glass-shadow);
-  color: var(--text);
-  gap: 1rem;
+  padding: 3rem 1.5rem;
+  gap: 0.75rem;
+  color: var(--text-secondary);
+  text-align: center;
 }
-.empty-icon {
-  font-size: 2.5rem;
-  color: var(--accent);
-}
-.empty-message {
-  font-size: 1.1rem;
-  font-weight: 500;
-}
-:global(.dark) .empty-state {
-  --glass-bg: rgba(30, 30, 40, 0.7);
-  --glass-shadow: 0 2px 24px 0 rgba(0,0,0,0.18);
-  --text: #fff;
-  --accent: #7de2fc;
-}
+.empty-icon { font-size: 2.5rem; opacity: 0.6; }
+.empty-message { font-size: 0.9375rem; font-weight: 500; }
 </style>

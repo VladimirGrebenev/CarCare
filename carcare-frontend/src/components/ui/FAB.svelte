@@ -1,12 +1,31 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
 
-  export let icon: Snippet | null = null;
-  export let label: string = '';
-  export let onClick: (() => void) | null = null;
-  export let className: string = '';
+  type Props = {
+    icon?: Snippet | null;
+    label?: string;
+    onClick?: (() => void) | null;
+    class?: string;
+    className?: string;
+    position?: 'fixed' | 'relative';
+  };
+
+  let {
+    icon = null,
+    label = '',
+    onClick = null,
+    class: classAttr = '',
+    className = '',
+    position = 'fixed'
+  }: Props = $props();
 </script>
-<button class="fab glassmorphism {className}" aria-label={label} onclick={onClick}>
+
+<button
+  class="fab {className} {classAttr}"
+  class:fab-fixed={position === 'fixed'}
+  aria-label={label}
+  onclick={onClick}
+>
   {#if icon}
     <span class="fab-icon">{@render icon()}</span>
   {/if}
@@ -14,32 +33,37 @@
     <span class="fab-label">{label}</span>
   {/if}
 </button>
+
 <style>
 .fab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1.375rem;
+  border-radius: 100px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  box-shadow: var(--shadow-md);
+  font-family: var(--font);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  z-index: 200;
+  transition: background var(--transition), box-shadow var(--transition), transform var(--transition);
+}
+.fab:hover {
+  background: var(--accent-hover);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-1px);
+}
+.fab:active { transform: translateY(0); }
+
+.fab-fixed {
   position: fixed;
   right: 2rem;
   bottom: 2rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 1rem 1.5rem;
-  border-radius: 2rem;
-  background: var(--glass-bg);
-  color: var(--accent);
-  box-shadow: var(--glass-shadow);
-  font-size: 1.2rem;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  z-index: 1200;
-  transition: background 0.2s;
 }
-.fab-icon {
-  font-size: 1.5rem;
-}
-:global(.dark) .fab {
-  --glass-bg: rgba(30, 30, 40, 0.8);
-  --glass-shadow: 0 2px 32px 0 rgba(0,0,0,0.22);
-  --accent: #7de2fc;
-}
+
+.fab-icon { font-size: 1.25rem; }
 </style>

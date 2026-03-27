@@ -3,12 +3,13 @@ package repository
 import (
 	"context"
 	"errors"
+
 	"github.com/VladimirGrebenev/CarCare-backend/internal/domain/car"
-	"github.com/VladimirGrebenev/CarCare-backend/internal/domain/user"
+	"github.com/VladimirGrebenev/CarCare-backend/internal/domain/fine"
 	"github.com/VladimirGrebenev/CarCare-backend/internal/domain/fuel"
 	"github.com/VladimirGrebenev/CarCare-backend/internal/domain/maintenance"
-	"github.com/VladimirGrebenev/CarCare-backend/internal/domain/fine"
-	"github.com/VladimirGrebenev/CarCare-backend/internal/domain/report"
+	"github.com/VladimirGrebenev/CarCare-backend/internal/domain/user"
+	"golang.org/x/crypto/bcrypt"
 )
 
 import (
@@ -25,8 +26,8 @@ func NewCarRepository(db *sql.DB) *CarRepository {
 }
 
 func (r *CarRepository) AddCar(c car.Car) error {
-	_, err := r.db.Exec(`INSERT INTO cars (id, brand, model, year, vin) VALUES ($1, $2, $3, $4, $5)`,
-		c.ID, c.Brand, c.Model, c.Year, c.VIN)
+	_, err := r.db.Exec(`INSERT INTO cars (id, brand, model, year, vin, plate) VALUES ($1, $2, $3, $4, $5, $6)`,
+		c.ID, c.Brand, c.Model, c.Year, c.VIN, c.Plate)
 	if err != nil {
 		if isUniqueViolation(err) {
 			return fmt.Errorf("car with VIN already exists: %w", err)
@@ -38,8 +39,8 @@ func (r *CarRepository) AddCar(c car.Car) error {
 
 func (r *CarRepository) GetCar(id string) (car.Car, error) {
 	var c car.Car
-	err := r.db.QueryRow(`SELECT id, brand, model, year, vin FROM cars WHERE id = $1`, id).
-		Scan(&c.ID, &c.Brand, &c.Model, &c.Year, &c.VIN)
+	err := r.db.QueryRow(`SELECT id, brand, model, year, vin, plate FROM cars WHERE id = $1`, id).
+		Scan(&c.ID, &c.Brand, &c.Model, &c.Year, &c.VIN, &c.Plate)
 	if err == sql.ErrNoRows {
 		return car.Car{}, fmt.Errorf("car not found")
 	}
@@ -50,8 +51,8 @@ func (r *CarRepository) GetCar(id string) (car.Car, error) {
 }
 
 func (r *CarRepository) UpdateCar(c car.Car) error {
-	res, err := r.db.Exec(`UPDATE cars SET brand=$1, model=$2, year=$3, vin=$4 WHERE id=$5`,
-		c.Brand, c.Model, c.Year, c.VIN, c.ID)
+	res, err := r.db.Exec(`UPDATE cars SET brand=$1, model=$2, year=$3, vin=$4, plate=$5 WHERE id=$6`,
+		c.Brand, c.Model, c.Year, c.VIN, c.Plate, c.ID)
 	if err != nil {
 		return err
 	}
@@ -75,15 +76,15 @@ func (r *CarRepository) DeleteCar(id string) error {
 }
 
 func (r *CarRepository) ListCars() ([]car.Car, error) {
-	rows, err := r.db.Query(`SELECT id, brand, model, year, vin FROM cars`)
+	rows, err := r.db.Query(`SELECT id, brand, model, year, vin, plate FROM cars`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var cars []car.Car
+	cars := make([]car.Car, 0)
 	for rows.Next() {
 		var c car.Car
-		if err := rows.Scan(&c.ID, &c.Brand, &c.Model, &c.Year, &c.VIN); err != nil {
+		if err := rows.Scan(&c.ID, &c.Brand, &c.Model, &c.Year, &c.VIN, &c.Plate); err != nil {
 			return nil, err
 		}
 		cars = append(cars, c)
@@ -109,25 +110,31 @@ func (r *UserRepository) Create(ctx context.Context, u *user.User) error {
 	if err := u.Validate(); err != nil {
 		return err
 	}
-	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO users (id, email, name, role) VALUES ($1, $2, $3, $4)`,
-		u.ID, string(u.Email), u.Name, string(u.Role))
+	hashed, err := bcrypt.GenerateFromPassword([]byte(u.PasswordHash), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+	_, err = r.db.ExecContext(ctx,
+		`INSERT INTO users (id, email, name, role, password_hash) VALUES ($1, $2, $3, $4, $5)`,
+		u.ID, string(u.Email), u.Name, string(u.Role), string(hashed))
 	if err != nil {
 		if isUniqueViolation(err) {
 			return fmt.Errorf("user with email already exists: %w", err)
 		}
 		return err
 	}
+	// Сохраним хеш обратно в объект, чтобы caller получил актуальное значение
+	u.PasswordHash = string(hashed)
 	return nil
 }
 
 func (r *UserRepository) GetByID(ctx context.Context, id string) (*user.User, error) {
-	row := r.db.QueryRowContext(ctx, `SELECT id, email, name, role FROM users WHERE id = $1`, id)
+	row := r.db.QueryRowContext(ctx, `SELECT id, email, name, role, COALESCE(password_hash,'') FROM users WHERE id = $1`, id)
 	return scanUser(row)
 }
 
 func (r *UserRepository) GetByEmail(ctx context.Context, email user.Email) (*user.User, error) {
-	row := r.db.QueryRowContext(ctx, `SELECT id, email, name, role FROM users WHERE email = $1`, string(email))
+	row := r.db.QueryRowContext(ctx, `SELECT id, email, name, role, COALESCE(password_hash,'') FROM users WHERE email = $1`, string(email))
 	return scanUser(row)
 }
 
@@ -161,12 +168,12 @@ func (r *UserRepository) Delete(ctx context.Context, id string) error {
 }
 
 func (r *UserRepository) List(ctx context.Context) ([]*user.User, error) {
-	rows, err := r.db.QueryContext(ctx, `SELECT id, email, name, role FROM users`)
+	rows, err := r.db.QueryContext(ctx, `SELECT id, email, name, role, COALESCE(password_hash,'') FROM users`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var users []*user.User
+	users := make([]*user.User, 0)
 	for rows.Next() {
 		u, err := scanUser(rows)
 		if err != nil {
@@ -180,18 +187,19 @@ func (r *UserRepository) List(ctx context.Context) ([]*user.User, error) {
 func scanUser(scanner interface {
 	Scan(dest ...any) error
 }) (*user.User, error) {
-	var id, email, name, role string
-	if err := scanner.Scan(&id, &email, &name, &role); err != nil {
+	var id, email, name, role, passwordHash string
+	if err := scanner.Scan(&id, &email, &name, &role, &passwordHash); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, sql.ErrNoRows
 		}
 		return nil, err
 	}
 	u := &user.User{
-		ID:    id,
-		Email: user.Email(email),
-		Name:  name,
-		Role:  user.Role(role),
+		ID:           id,
+		Email:        user.Email(email),
+		Name:         name,
+		Role:         user.Role(role),
+		PasswordHash: passwordHash,
 	}
 	if err := u.Validate(); err != nil {
 		return nil, err
@@ -255,7 +263,7 @@ func (r *FuelRepository) ListFuelEvents() ([]fuel.FuelEvent, error) {
 	       return nil, err
        }
        defer rows.Close()
-       var events []fuel.FuelEvent
+       events := make([]fuel.FuelEvent, 0)
        for rows.Next() {
 	       var e fuel.FuelEvent
 	       if err := rows.Scan(&e.ID, &e.CarID, &e.Volume, &e.Price, &e.Type, &e.Date); err != nil {
@@ -267,28 +275,144 @@ func (r *FuelRepository) ListFuelEvents() ([]fuel.FuelEvent, error) {
 }
 
 // MaintenanceRepository implements maintenance.Repository
-type MaintenanceRepository struct{}
+type MaintenanceRepository struct {
+	db *sql.DB
+}
 
-func NewMaintenanceRepository() *MaintenanceRepository { return &MaintenanceRepository{} }
+func NewMaintenanceRepository(db *sql.DB) *MaintenanceRepository {
+	return &MaintenanceRepository{db: db}
+}
 
-func (r *MaintenanceRepository) GetByID(ctx context.Context, id string) (*maintenance.MaintenanceEvent, error) {
-	return nil, errors.New("not implemented")
+func (r *MaintenanceRepository) AddMaintenanceEvent(event maintenance.MaintenanceEvent) error {
+	_, err := r.db.Exec(`INSERT INTO maintenance_events (id, car_id, type, date, cost) VALUES ($1, $2, $3, $4, $5)`,
+		event.ID, event.CarID, event.Type, event.Date, event.Cost)
+	return err
+}
+
+func (r *MaintenanceRepository) GetMaintenanceEvent(id string) (maintenance.MaintenanceEvent, error) {
+	var e maintenance.MaintenanceEvent
+	err := r.db.QueryRow(`SELECT id, car_id, type, date, cost FROM maintenance_events WHERE id = $1`, id).
+		Scan(&e.ID, &e.CarID, &e.Type, &e.Date, &e.Cost)
+	if err == sql.ErrNoRows {
+		return maintenance.MaintenanceEvent{}, errors.New("maintenance event not found")
+	}
+	return e, err
+}
+
+func (r *MaintenanceRepository) UpdateMaintenanceEvent(event maintenance.MaintenanceEvent) error {
+	res, err := r.db.Exec(`UPDATE maintenance_events SET car_id=$1, type=$2, date=$3, cost=$4 WHERE id=$5`,
+		event.CarID, event.Type, event.Date, event.Cost, event.ID)
+	if err != nil {
+		return err
+	}
+	count, _ := res.RowsAffected()
+	if count == 0 {
+		return errors.New("maintenance event not found")
+	}
+	return nil
+}
+
+func (r *MaintenanceRepository) DeleteMaintenanceEvent(id string) error {
+	res, err := r.db.Exec(`DELETE FROM maintenance_events WHERE id=$1`, id)
+	if err != nil {
+		return err
+	}
+	count, _ := res.RowsAffected()
+	if count == 0 {
+		return errors.New("maintenance event not found")
+	}
+	return nil
+}
+
+func (r *MaintenanceRepository) ListMaintenanceEvents() ([]maintenance.MaintenanceEvent, error) {
+	rows, err := r.db.Query(`SELECT id, car_id, type, date, cost FROM maintenance_events`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	events := make([]maintenance.MaintenanceEvent, 0)
+	for rows.Next() {
+		var e maintenance.MaintenanceEvent
+		if err := rows.Scan(&e.ID, &e.CarID, &e.Type, &e.Date, &e.Cost); err != nil {
+			return nil, err
+		}
+		events = append(events, e)
+	}
+	return events, nil
 }
 
 // FineRepository implements fine.Repository
-type FineRepository struct{}
+type FineRepository struct {
+	db *sql.DB
+}
 
-func NewFineRepository() *FineRepository { return &FineRepository{} }
+func NewFineRepository(db *sql.DB) *FineRepository {
+	return &FineRepository{db: db}
+}
 
-func (r *FineRepository) GetByID(ctx context.Context, id string) (*fine.Fine, error) {
-	return nil, errors.New("not implemented")
+func (r *FineRepository) AddFine(f fine.Fine) error {
+	_, err := r.db.Exec(`INSERT INTO fines (id, car_id, amount, type, date, status, description) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		f.ID, f.CarID, f.Amount, f.Type, f.Date, f.Status, f.Description)
+	return err
+}
+
+func (r *FineRepository) GetFine(id string) (fine.Fine, error) {
+	var f fine.Fine
+	err := r.db.QueryRow(`SELECT id, car_id, amount, type, date, status, description FROM fines WHERE id = $1`, id).
+		Scan(&f.ID, &f.CarID, &f.Amount, &f.Type, &f.Date, &f.Status, &f.Description)
+	if err == sql.ErrNoRows {
+		return fine.Fine{}, errors.New("fine not found")
+	}
+	return f, err
+}
+
+func (r *FineRepository) UpdateFine(f fine.Fine) error {
+	res, err := r.db.Exec(`UPDATE fines SET car_id=$1, amount=$2, type=$3, date=$4, status=$5, description=$6 WHERE id=$7`,
+		f.CarID, f.Amount, f.Type, f.Date, f.Status, f.Description, f.ID)
+	if err != nil {
+		return err
+	}
+	count, _ := res.RowsAffected()
+	if count == 0 {
+		return errors.New("fine not found")
+	}
+	return nil
+}
+
+func (r *FineRepository) DeleteFine(id string) error {
+	res, err := r.db.Exec(`DELETE FROM fines WHERE id=$1`, id)
+	if err != nil {
+		return err
+	}
+	count, _ := res.RowsAffected()
+	if count == 0 {
+		return errors.New("fine not found")
+	}
+	return nil
+}
+
+func (r *FineRepository) ListFines() ([]fine.Fine, error) {
+	rows, err := r.db.Query(`SELECT id, car_id, amount, type, date, status, description FROM fines`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	fines := make([]fine.Fine, 0)
+	for rows.Next() {
+		var f fine.Fine
+		if err := rows.Scan(&f.ID, &f.CarID, &f.Amount, &f.Type, &f.Date, &f.Status, &f.Description); err != nil {
+			return nil, err
+		}
+		fines = append(fines, f)
+	}
+	return fines, nil
 }
 
 // ReportRepository implements report.Repository
-type ReportRepository struct{}
+type ReportRepository struct {
+	db *sql.DB
+}
 
-func NewReportRepository() *ReportRepository { return &ReportRepository{} }
-
-func (r *ReportRepository) GetByID(ctx context.Context, id string) (*report.Report, error) {
-	return nil, errors.New("not implemented")
+func NewReportRepository(db *sql.DB) *ReportRepository {
+	return &ReportRepository{db: db}
 }

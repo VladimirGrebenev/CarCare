@@ -49,14 +49,15 @@ func newAuthUsecase(repo *mockUserRepo) *usecase.AuthUsecase {
 func TestRegister_Success(t *testing.T) {
 	repo := &mockUserRepo{users: map[user.Email]*user.User{}}
 	uc := newAuthUsecase(repo)
-	err := uc.Register(context.Background(), "test@example.com", "password")
+	token, err := uc.Register(context.Background(), "test@example.com", "password")
 	assert.NoError(t, err)
+	assert.NotEmpty(t, token)
 }
 
 func TestRegister_Duplicate(t *testing.T) {
-	repo := &mockUserRepo{users: map[user.Email]*user.User{user.Email("test@example.com"): {Email: user.Email("test@example.com")}}}
+	repo := &mockUserRepo{users: map[user.Email]*user.User{user.Email("test@example.com"): {Email: user.Email("test@example.com"), Name: "test", Role: user.RoleUser}}}
 	uc := newAuthUsecase(repo)
-	err := uc.Register(context.Background(), "test@example.com", "password")
+	_, err := uc.Register(context.Background(), "test@example.com", "password")
 	assert.Error(t, err)
 }
 

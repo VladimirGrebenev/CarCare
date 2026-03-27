@@ -10,10 +10,11 @@ var (
 )
 
 type User struct {
-	ID    string
-	Email Email
-	Name  string
-	Role  Role
+	ID           string
+	Email        Email
+	Name         string
+	Role         Role
+	PasswordHash string
 }
 
 // Validate checks business/domain rules for User

@@ -1,20 +1,15 @@
 <script lang="ts">
-  export let size: number = 32;
-  export let color: string = '#7de2fc';
-  export let className: string = '';
+  type Props = { size?: number; className?: string; };
+  let { size = 32, className = '' }: Props = $props();
 </script>
-<div class="loader {className}" style="width:{size}px;height:{size}px;border-top-color:{color};"></div>
+<div class="loader {className}" style="width:{size}px;height:{size}px;" aria-label="Загрузка..." role="status"></div>
 <style>
 .loader {
-  border: 4px solid rgba(125,226,252,0.2);
-  border-top: 4px solid #7de2fc;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
   border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  animation: spin 1s linear infinite;
+  animation: spin 0.7s linear infinite;
   margin: 0 auto;
 }
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>

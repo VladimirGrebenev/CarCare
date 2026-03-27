@@ -1,35 +1,45 @@
 <script lang="ts">
-  export let active: string = '';
-  export let onNavigate: ((path: string) => void) | null = null;
+  import { goto } from '$app/navigation';
+
+  type Props = {
+    active?: string;
+    onNavigate?: ((path: string) => void) | null;
+    onToggleTheme?: (() => void) | null;
+  };
+
+  let { active = '', onNavigate = null, onToggleTheme = null }: Props = $props();
+
   const nav = [
-    { path: '/', label: 'Главная', icon: '🏠' },
-    { path: '/cars', label: 'Машины', icon: '🚗' },
-    { path: '/fuel', label: 'Топливо', icon: '⛽' },
-    { path: '/maintenance', label: 'Сервис', icon: '🛠️' },
-    { path: '/fines', label: 'Штрафы', icon: '💸' },
-    { path: '/reports', label: 'Отчёты', icon: '📊' },
-    { path: '/profile', label: 'Профиль', icon: '👤' }
+    { path: '/',            label: 'Главная',   icon: '⊞' },
+    { path: '/cars',        label: 'Машины',    icon: '🚗' },
+    { path: '/fuel',        label: 'Топливо',   icon: '⛽' },
+    { path: '/maintenance', label: 'Сервис',    icon: '🔧' },
+    { path: '/fines',       label: 'Штрафы',    icon: '💸' },
+    { path: '/reports',     label: 'Отчёты',    icon: '📊' },
+    { path: '/profile',     label: 'Профиль',   icon: '👤' },
   ];
-  function go(path) {
+
+  function go(path: string) {
     if (onNavigate) onNavigate(path);
+    else goto(path);
   }
 </script>
-<nav class="navbar glassmorphism" aria-label="Основная навигация">
+
+<nav class="navbar" aria-label="Основная навигация">
   {#each nav as item}
     <a
       href={item.path}
+      class="nav-item"
       class:active={active === item.path}
       aria-current={active === item.path ? 'page' : undefined}
-      onclick={(event) => {
-        event.preventDefault();
-        go(item.path);
-      }}
+      onclick={(e) => { e.preventDefault(); go(item.path); }}
     >
       <span class="nav-icon">{item.icon}</span>
       <span class="nav-label">{item.label}</span>
     </a>
   {/each}
 </nav>
+
 <style>
 .navbar {
   display: flex;
@@ -40,35 +50,34 @@
   left: 0;
   width: 100vw;
   height: 64px;
-  background: var(--glass-bg);
-  box-shadow: var(--glass-shadow);
+  background: var(--bg-sidebar);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-top: 1px solid var(--border);
   z-index: 100;
-  border-radius: 1.5rem 1.5rem 0 0;
-  padding: 0 1rem;
+  padding: 0 0.5rem;
+  overflow-x: auto;
+  gap: 2px;
 }
-.navbar a {
+
+.nav-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  color: var(--text);
+  gap: 2px;
+  color: var(--text-secondary);
   text-decoration: none;
-  font-size: 1rem;
+  font-size: 0.6875rem;
   font-weight: 500;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.75rem;
-  transition: background 0.2s;
+  padding: 0.375rem 0.5rem;
+  border-radius: var(--radius-md);
+  transition: background var(--transition), color var(--transition);
+  min-width: 48px;
+  flex-shrink: 0;
 }
-.navbar a.active, .navbar a:focus {
-  background: rgba(125,226,252,0.18);
-  color: var(--accent);
-}
-.nav-icon {
-  font-size: 1.3rem;
-}
-:global(.dark) .navbar {
-  --glass-bg: rgba(30, 30, 40, 0.7);
-  --glass-shadow: 0 2px 24px 0 rgba(0,0,0,0.18);
-  --text: #fff;
-  --accent: #7de2fc;
-}
+.nav-item:hover { background: var(--accent-light); color: var(--text-primary); }
+.nav-item.active { color: var(--accent-text); }
+
+.nav-icon { font-size: 1.25rem; }
+.nav-label { white-space: nowrap; }
 </style>
