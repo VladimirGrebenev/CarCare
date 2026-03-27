@@ -1,0 +1,51 @@
+name: Backend CI
+
+on:
+  push:
+    paths:
+      - 'carcare-backend/**'
+  pull_request:
+    paths:
+      - 'carcare-backend/**'
+
+jobs:
+  test-and-migrate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: carcare
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.x'
+
+      - name: Install golang-migrate
+        run: |
+          curl -L https://github.com/golang-migrate/migrate/releases/download/v4.17.1/migrate.linux-amd64.tar.gz | tar xvz
+          sudo mv migrate /usr/local/bin/
+
+      - name: Run DB migrations
+        run: |
+          migrate -path carcare-backend/internal/infrastructure/migration -database "postgres://postgres:postgres@localhost:5432/carcare?sslmode=disable" up
+
+      - name: Build backend
+        run: |
+          cd carcare-backend
+          go build ./cmd/carcare
+
+      - name: Run tests
+        run: |
+          cd carcare-backend
+          go test ./...
