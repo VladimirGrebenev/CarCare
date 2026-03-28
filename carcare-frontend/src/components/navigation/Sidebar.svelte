@@ -88,7 +88,7 @@
         <circle class="logo-outer" cx="132" cy="130" r="90" fill="none" stroke="currentColor" stroke-width="26"
           stroke-dasharray="503 62" stroke-dashoffset="62" stroke-linecap="butt"/>
         <circle class="logo-inner" cx="132" cy="130" r="54" fill="none" stroke="currentColor" stroke-width="24"
-          stroke-dasharray="322 42" stroke-dashoffset="40" stroke-linecap="butt"/>
+          stroke-dasharray="322 42" stroke-dashoffset="37" stroke-linecap="butt"/>
       </svg>
     </span>
     {#if !collapsed}
@@ -206,10 +206,10 @@
   transition: transform 600ms cubic-bezier(0.4, 0, 0.2, 1) 80ms;
 }
 .sidebar-brand:hover .logo-outer {
-  transform: rotate(90deg);
+  transform: rotate(56deg);
 }
 .sidebar-brand:hover .logo-inner {
-  transform: rotate(-90deg);
+  transform: rotate(20deg);
 }
 
 .brand-name {
