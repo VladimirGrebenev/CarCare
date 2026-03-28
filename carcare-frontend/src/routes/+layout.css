@@ -2,6 +2,8 @@
    CarCare Design System — Windows 11 / Fluent
    ============================================ */
 
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
+
 /* --- Dark theme (default) --- */
 :root {
   --bg-base: #1c1c1c;
@@ -34,7 +36,8 @@
   --transition: 150ms ease;
   --transition-slow: 250ms ease;
   --sidebar-width: 240px;
-  --font: 'Segoe UI Variable', 'Segoe UI', 'Inter', system-ui, sans-serif;
+  --sidebar-width-collapsed: 56px;
+  --font: 'Montserrat', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
   /* legacy compat */
   --glass-bg: rgba(40, 40, 40, 0.88);
   --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
@@ -165,37 +168,77 @@ h4 { font-size: 1rem; font-weight: 600; }
 
 /* --- Native select styling fix --- */
 select {
-  background-color: var(--bg-layer);
-  color: var(--text-primary);
-  border: 1px solid var(--border);
+  background-color: #2b2b2b;
+  color: #f3f3f3;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 6px;
   padding: 8px 32px 8px 12px;
   font-size: 14px;
   font-family: inherit;
-  cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23aaa' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 10px center;
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-select:hover {
-  border-color: var(--accent);
-}
-
+select:hover { border-color: rgba(0, 120, 212, 0.6); }
 select:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2);
+  border-color: rgba(0, 120, 212, 0.75);
+  box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.18);
 }
 
 select option {
-  background-color: var(--bg-layer);
-  color: var(--text-primary);
+  background-color: #2b2b2b;
+  color: #f3f3f3;
 }
 
-.light select {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+/* Светлая тема — без appearance:none чтобы не было артефактов курсора на Linux */
+:root.light select {
+  appearance: auto;
+  -webkit-appearance: auto;
+  background-image: none;
+  background-color: #ffffff;
+  color: #1a1a1a;
+  border-color: rgba(0, 0, 0, 0.15);
+  padding: 8px 12px;
+}
+
+:root.light select:hover { border-color: rgba(0, 120, 212, 0.5); }
+:root.light select:focus {
+  border-color: rgba(0, 120, 212, 0.75);
+  box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.18);
+}
+
+:root.light select option {
+  background-color: #ffffff;
+  color: #1a1a1a;
+}
+
+/* ── Spotlight effect (Windows 11 Fluent) ── */
+.spotlight {
+  position: relative;
+  overflow: hidden;
+}
+.spotlight::before {
+  content: '';
+  position: absolute;
+  left: var(--spotlight-x, 50%);
+  top: var(--spotlight-y, 50%);
+  width: 120px;
+  height: 120px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.10) 0%, transparent 70%);
+  opacity: var(--spotlight-opacity, 0);
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 0;
+}
+
+/* Light theme: darker spotlight for visibility */
+:root.light .spotlight::before {
+  background: radial-gradient(circle, rgba(0, 0, 0, 0.06) 0%, transparent 70%);
 }
