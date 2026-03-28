@@ -18,10 +18,10 @@ func newFineRepoWithMock() (*repository.FineRepository, sqlmock.Sqlmock, func())
 func TestFineRepository_AddFine(t *testing.T) {
 	repo, mock, cleanup := newFineRepoWithMock()
 	defer cleanup()
-	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO fines (id, car_id, amount, type, date) VALUES ($1, $2, $3, $4, $5)")).
-		WithArgs("1", "1", 500.0, "speeding", "2026-03-22").
+	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO fines (id, car_id, amount, type, date, status, description) VALUES ($1, $2, $3, $4, $5, $6, $7)")).
+		WithArgs("1", "1", 500.0, "speeding", "2026-03-22", "unpaid", "превышение скорости").
 		WillReturnResult(sqlmock.NewResult(1, 1))
-	err := repo.AddFine(fine.Fine{ID: "1", CarID: "1", Amount: 500, Type: "speeding", Date: "2026-03-22"})
+	err := repo.AddFine(fine.Fine{ID: "1", CarID: "1", Amount: 500, Type: "speeding", Date: "2026-03-22", Status: "unpaid", Description: "превышение скорости"})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -30,9 +30,9 @@ func TestFineRepository_AddFine(t *testing.T) {
 func TestFineRepository_ListFines(t *testing.T) {
 	repo, mock, cleanup := newFineRepoWithMock()
 	defer cleanup()
-	rows := sqlmock.NewRows([]string{"id", "car_id", "amount", "type", "date"}).
-		AddRow("1", "1", 500.0, "speeding", "2026-03-22")
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, car_id, amount, type, date FROM fines")).
+	rows := sqlmock.NewRows([]string{"id", "car_id", "amount", "type", "date", "status", "description"}).
+		AddRow("1", "1", 500.0, "speeding", "2026-03-22", "unpaid", "превышение скорости")
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, car_id, amount, type, date, status, description FROM fines")).
 		WillReturnRows(rows)
 	fines, err := repo.ListFines()
 	if err != nil {
