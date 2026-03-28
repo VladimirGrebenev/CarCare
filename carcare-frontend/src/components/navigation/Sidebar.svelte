@@ -42,7 +42,7 @@
     {
       path: '/fuel',
       label: 'Топливо',
-      icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h12v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3z"/><path d="M15 7h2a2 2 0 0 1 2 2v7a1 1 0 0 0 2 0V9"/><line x1="3" y1="7" x2="15" y2="7"/><line x1="8" y1="3" x2="8" y2="7"/></svg>`
+      icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="12" height="14" rx="2"/><path d="M14 9h2a2 2 0 0 1 2 2v4a1 1 0 0 0 2 0v-5l-3-4"/><path d="M6 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/><line x1="6" y1="12" x2="10" y2="12"/></svg>`
     },
     {
       path: '/maintenance',
@@ -66,12 +66,6 @@
     },
   ];
 
-  const brandIcon = `<svg width="28" height="28" viewBox="0 0 280 260" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="132" cy="130" r="90" fill="none" stroke="currentColor" stroke-width="26"
-      stroke-dasharray="503 62" stroke-dashoffset="62" stroke-linecap="butt"/>
-    <circle cx="132" cy="130" r="54" fill="none" stroke="currentColor" stroke-width="24"
-      stroke-dasharray="322 42" stroke-dashoffset="40" stroke-linecap="butt"/>
-  </svg>`;
 
   const themeIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
 
@@ -89,7 +83,14 @@
 <aside class="sidebar" class:collapsed aria-label="Боковая навигация">
   <!-- Brand row -->
   <div class="sidebar-brand">
-    <span class="brand-icon">{@html brandIcon}</span>
+    <span class="brand-icon">
+      <svg class="logo-svg" width="28" height="28" viewBox="0 0 280 260" xmlns="http://www.w3.org/2000/svg">
+        <circle class="logo-outer" cx="132" cy="130" r="90" fill="none" stroke="currentColor" stroke-width="26"
+          stroke-dasharray="503 62" stroke-dashoffset="62" stroke-linecap="butt"/>
+        <circle class="logo-inner" cx="132" cy="130" r="54" fill="none" stroke="currentColor" stroke-width="24"
+          stroke-dasharray="322 42" stroke-dashoffset="40" stroke-linecap="butt"/>
+      </svg>
+    </span>
     {#if !collapsed}
       <span class="brand-name"><span class="brand-car">Car</span><span class="brand-care">Care</span></span>
     {/if}
@@ -192,6 +193,23 @@
   align-items: center;
   color: var(--accent-text);
   flex-shrink: 0;
+  cursor: pointer;
+}
+
+/* Анимация логотипа при наведении */
+.logo-svg .logo-outer {
+  transform-origin: 132px 130px;
+  transition: transform 600ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.logo-svg .logo-inner {
+  transform-origin: 132px 130px;
+  transition: transform 600ms cubic-bezier(0.4, 0, 0.2, 1) 80ms;
+}
+.sidebar-brand:hover .logo-outer {
+  transform: rotate(90deg);
+}
+.sidebar-brand:hover .logo-inner {
+  transform: rotate(-90deg);
 }
 
 .brand-name {
