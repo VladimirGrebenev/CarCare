@@ -15,7 +15,7 @@ func (m *mockFuelRepo) GetFuelEvent(id string) (fuel.FuelEvent, error) {
 }
 func (m *mockFuelRepo) UpdateFuelEvent(e fuel.FuelEvent) error { return nil }
 func (m *mockFuelRepo) DeleteFuelEvent(id string) error        { return nil }
-func (m *mockFuelRepo) ListFuelEvents() ([]fuel.FuelEvent, error) {
+func (m *mockFuelRepo) ListFuelEvents(userID string) ([]fuel.FuelEvent, error) {
 	return []fuel.FuelEvent{{ID: "1", CarID: "1", Volume: 40, Price: 2000, Type: "AI-95", Date: "2026-03-22"}}, nil
 }
 
@@ -55,7 +55,7 @@ func TestDeleteFuelEventUsecase_Execute(t *testing.T) {
 
 func TestListFuelEventsUsecase_Execute(t *testing.T) {
 	uc := usecase.ListFuelEventsUsecase{Repo: &mockFuelRepo{}}
-	events, err := uc.Execute()
+	events, err := uc.Execute("user-1")
 	if err != nil {
 		t.Errorf("expected nil error, got %v", err)
 	}

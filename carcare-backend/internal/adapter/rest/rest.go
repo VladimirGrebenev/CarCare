@@ -353,7 +353,8 @@ func (h *FuelHandler) handleDelete(w http.ResponseWriter, r *http.Request, id st
 }
 
 func (h *FuelHandler) handleList(w http.ResponseWriter, r *http.Request) {
-	events, err := h.List.Execute()
+	userID := getUserIDFromContext(r)
+	events, err := h.List.Execute(userID)
 	if err != nil || events == nil {
 		events = []fuel.FuelEvent{}
 	}
@@ -467,7 +468,8 @@ func (h *MaintenanceHandler) handleDelete(w http.ResponseWriter, r *http.Request
 }
 
 func (h *MaintenanceHandler) handleList(w http.ResponseWriter, r *http.Request) {
-	events, err := h.List.Execute()
+	userID := getUserIDFromContext(r)
+	events, err := h.List.Execute(userID)
 	if err != nil || events == nil {
 		events = []maintenance.MaintenanceEvent{}
 	}
@@ -581,7 +583,8 @@ func (h *FineHandler) handleDelete(w http.ResponseWriter, r *http.Request, id st
 }
 
 func (h *FineHandler) handleList(w http.ResponseWriter, r *http.Request) {
-	fines, err := h.List.Execute()
+	userID := getUserIDFromContext(r)
+	fines, err := h.List.Execute(userID)
 	if err != nil || fines == nil {
 		fines = []fine.Fine{}
 	}
@@ -614,20 +617,21 @@ func (h *ReportHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	userID := getUserIDFromContext(r)
 	var summary ReportSummary
-	if fuelEvents, err := (&usecase.ListFuelEventsUsecase{Repo: h.UC.Fuel}).Execute(); err == nil {
+	if fuelEvents, err := (&usecase.ListFuelEventsUsecase{Repo: h.UC.Fuel}).Execute(userID); err == nil {
 		summary.FuelCount = len(fuelEvents)
 		for _, e := range fuelEvents {
 			summary.TotalFuelCost += e.Volume * e.Price
 		}
 	}
-	if mEvents, err := (&usecase.ListMaintenanceEventsUsecase{Repo: h.UC.Maintenance}).Execute(); err == nil {
+	if mEvents, err := (&usecase.ListMaintenanceEventsUsecase{Repo: h.UC.Maintenance}).Execute(userID); err == nil {
 		summary.MaintenanceCount = len(mEvents)
 		for _, e := range mEvents {
 			summary.TotalMaintenanceCost += e.Cost
 		}
 	}
-	if fines, err := (&usecase.ListFinesUsecase{Repo: h.UC.Fine}).Execute(); err == nil {
+	if fines, err := (&usecase.ListFinesUsecase{Repo: h.UC.Fine}).Execute(userID); err == nil {
 		summary.FinesCount = len(fines)
 		for _, f := range fines {
 			summary.TotalFinesAmount += f.Amount

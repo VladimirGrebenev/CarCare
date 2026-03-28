@@ -8,7 +8,9 @@
   import ErrorState from '../../components/ui/ErrorState.svelte';
   import Input from '../../components/ui/Input.svelte';
   import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
   import { ensureAuthenticated } from '../../lib/authGuard';
+  import { clearAuth } from '../../stores/auth';
   import { fetchProfile as apiFetchProfile, addCar as apiAddCar, fetchCars } from '../../lib/api';
   import type { Car } from '../../lib/types';
 
@@ -164,6 +166,11 @@
       .join('');
   }
 
+  function handleLogout() {
+    clearAuth();
+    goto('/login');
+  }
+
   onMount(async () => {
     await ensureAuthenticated();
     loadProfile();
@@ -201,6 +208,11 @@
           {#if profile?.email}
             <p class="profile-email">{profile.email}</p>
           {/if}
+        </div>
+        <div class="profile-actions">
+          <Button variant="danger" onclick={handleLogout}>
+            Выйти из аккаунта
+          </Button>
         </div>
       </section>
 
@@ -397,7 +409,8 @@
   user-select: none;
 }
 
-.profile-info { display: flex; flex-direction: column; gap: 0.375rem; }
+.profile-info { display: flex; flex-direction: column; gap: 0.375rem; flex: 1; }
+.profile-actions { flex-shrink: 0; margin-left: auto; }
 .profile-name { font-size: 1.375rem; font-weight: 700; margin: 0; }
 .profile-email { font-size: 0.9375rem; color: var(--text-secondary); margin: 0; }
 
@@ -547,6 +560,7 @@
 @media (max-width: 640px) {
   .profile-layout { max-width: 100%; padding: 0 0 2rem; }
   .profile-header { flex-direction: column; align-items: flex-start; padding: 1.25rem; }
+  .profile-actions { margin-left: 0; }
   .cars-grid { grid-template-columns: 1fr; }
   .car-form { grid-template-columns: 1fr; }
   .col-span-2 { grid-column: 1; }

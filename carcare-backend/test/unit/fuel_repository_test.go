@@ -68,9 +68,10 @@ func TestFuelRepository_ListFuelEvents(t *testing.T) {
 	defer cleanup()
 	rows := sqlmock.NewRows([]string{"id", "car_id", "volume", "price", "type", "date"}).
 		AddRow("1", "1", 40.0, 2000.0, "AI-95", "2026-03-22")
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, car_id, volume, price, type, date FROM fuel_events")).
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT fe.id, fe.car_id, fe.volume, fe.price, fe.type, fe.date FROM fuel_events fe JOIN cars c ON c.id = fe.car_id WHERE c.user_id = $1")).
+		WithArgs("user-1").
 		WillReturnRows(rows)
-	events, err := repo.ListFuelEvents()
+	events, err := repo.ListFuelEvents("user-1")
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}

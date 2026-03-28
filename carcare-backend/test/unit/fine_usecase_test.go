@@ -13,7 +13,7 @@ func (m *mockFineRepo) AddFine(f fine.Fine) error                    { return ni
 func (m *mockFineRepo) GetFine(id string) (fine.Fine, error)         { return fine.Fine{}, nil }
 func (m *mockFineRepo) UpdateFine(f fine.Fine) error                 { return nil }
 func (m *mockFineRepo) DeleteFine(id string) error                   { return nil }
-func (m *mockFineRepo) ListFines() ([]fine.Fine, error)              { return []fine.Fine{}, nil }
+func (m *mockFineRepo) ListFines(userID string) ([]fine.Fine, error) { return []fine.Fine{}, nil }
 
 func TestAddFineUsecase_Execute(t *testing.T) {
 	uc := usecase.AddFineUsecase{Repo: &mockFineRepo{}}

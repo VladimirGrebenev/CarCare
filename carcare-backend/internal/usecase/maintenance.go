@@ -38,6 +38,6 @@ type ListMaintenanceEventsUsecase struct {
 	Repo maintenance.Repository
 }
 
-func (uc *ListMaintenanceEventsUsecase) Execute() ([]maintenance.MaintenanceEvent, error) {
-	return uc.Repo.ListMaintenanceEvents()
+func (uc *ListMaintenanceEventsUsecase) Execute(userID string) ([]maintenance.MaintenanceEvent, error) {
+	return uc.Repo.ListMaintenanceEvents(userID)
 }
