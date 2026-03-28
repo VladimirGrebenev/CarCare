@@ -37,8 +37,8 @@
 
   // Pagination state
   let page = $state(1);
-  let perPage = $state(25);
-  const PER_PAGE_OPTIONS = [10, 25, 100];
+  let perPage = $state(5);
+  const PER_PAGE_OPTIONS = [5, 10, 25];
 
   // Sorting state for cars
   type CarSortKey = 'name' | 'year';
@@ -68,7 +68,7 @@
   );
 
   let totalPages = $derived(Math.ceil(sortedCars.length / perPage));
-  let showPagination = $derived(sortedCars.length > 10);
+  let showPagination = $derived(sortedCars.length > 5);
   let pagedCars = $derived(sortedCars.slice((page - 1) * perPage, page * perPage));
 
   let pageNumbers = $derived((() => {
@@ -200,7 +200,7 @@
 </script>
 
 <PageLayout title="Мои автомобили">
-  <div class="page-toolbar">
+  {#snippet toolbar()}
     <div class="sort-controls">
       <span class="sort-label">Сортировка:</span>
       <button
@@ -219,7 +219,7 @@
       </button>
     </div>
     <Button variant="primary" onclick={openAdd}>+ Добавить авто</Button>
-  </div>
+  {/snippet}
 
   {#if loading}
     <Loader size={40} />
@@ -339,15 +339,6 @@
 </Modal>
 
 <style>
-.page-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.25rem;
-  flex-wrap: wrap;
-}
-
 .sort-controls {
   display: flex;
   align-items: center;

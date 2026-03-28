@@ -60,25 +60,18 @@
     { key: '_dateRaw', dir: 'desc' }
   ]);
 
-  function handleSort(key: string, event: MouseEvent) {
-    const isShift = event.shiftKey;
+  function handleSort(key: string, _event: MouseEvent) {
     const existing = sortState.findIndex(s => s.key === key);
-    if (isShift) {
-      if (existing === -1) {
-        sortState = [...sortState.slice(0, 1), { key, dir: 'desc' }];
-      } else if (sortState[existing].dir === 'desc') {
-        sortState = sortState.map((s, i) => i === existing ? { ...s, dir: 'asc' as const } : s);
+    if (existing === -1) {
+      if (sortState.length < 2) {
+        sortState = [...sortState, { key, dir: 'desc' as const }];
       } else {
-        sortState = sortState.filter((_, i) => i !== existing);
+        sortState = [sortState[0], { key, dir: 'desc' as const }];
       }
+    } else if (sortState[existing].dir === 'desc') {
+      sortState = sortState.map((s, i) => i === existing ? { ...s, dir: 'asc' as const } : s);
     } else {
-      if (existing === -1 || existing === 1) {
-        sortState = [{ key, dir: 'desc' }];
-      } else if (sortState[0].dir === 'desc') {
-        sortState = [{ key, dir: 'asc' }, ...sortState.slice(1)];
-      } else {
-        sortState = sortState.slice(1);
-      }
+      sortState = sortState.filter((_, i) => i !== existing);
     }
     page = 1;
   }
@@ -141,8 +134,8 @@
 
   // Pagination state
   let page = $state(1);
-  let perPage = $state(25);
-  const PER_PAGE_OPTIONS = [10, 25, 100];
+  let perPage = $state(5);
+  const PER_PAGE_OPTIONS = [5, 10, 25];
 
   let displayRows = $derived(
     rows.filter(r => {
@@ -159,7 +152,7 @@
   // Pagination derived values
   let sortedRows = $derived(applySorting(displayRows));
   let totalPages = $derived(Math.ceil(sortedRows.length / perPage));
-  let showPagination = $derived(sortedRows.length > 10);
+  let showPagination = $derived(sortedRows.length > 5);
   let pagedRows = $derived(sortedRows.slice((page - 1) * perPage, page * perPage));
 
   let pageNumbers = $derived((() => {
@@ -267,7 +260,7 @@
 </script>
 
 <PageLayout title="Штрафы">
-  <div class="page-toolbar">
+  {#snippet toolbar()}
     <div class="filters">
       <Input
         placeholder="Поиск по описанию или авто..."
@@ -300,7 +293,7 @@
       </div>
     </div>
     <Button variant="primary" onclick={openAdd}>+ Добавить</Button>
-  </div>
+  {/snippet}
 
   <Table
     columns={COLUMNS}
@@ -445,14 +438,6 @@
 </PageLayout>
 
 <style>
-.page-toolbar {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-}
 .filters { display: flex; gap: 0.75rem; flex: 1; flex-wrap: wrap; align-items: flex-end; }
 
 .filter-field { display: flex; flex-direction: column; gap: 0.375rem; }

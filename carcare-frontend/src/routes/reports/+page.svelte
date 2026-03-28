@@ -68,14 +68,14 @@
   let activeTab = $state<Tab>('overview');
 
   // Pagination per tab
-  const PER_PAGE_OPTIONS = [10, 25, 100];
+  const PER_PAGE_OPTIONS = [5, 10, 25];
 
   let fuelPage = $state(1);
-  let fuelPerPage = $state(25);
+  let fuelPerPage = $state(5);
   let maintPage = $state(1);
-  let maintPerPage = $state(25);
+  let maintPerPage = $state(5);
   let finesPage = $state(1);
-  let finesPerPage = $state(25);
+  let finesPerPage = $state(5);
 
   // Sort state per tab
   type SortEntry = { key: string; dir: 'asc' | 'desc' };
@@ -89,27 +89,20 @@
     setSort: (v: SortEntry[]) => void,
     setPage: (p: number) => void
   ) {
-    return (key: string, event: MouseEvent) => {
-      const isShift = event.shiftKey;
+    return (key: string, _event: MouseEvent) => {
       const current = getSort();
       const existing = current.findIndex(s => s.key === key);
       let next: SortEntry[];
-      if (isShift) {
-        if (existing === -1) {
-          next = [...current.slice(0, 1), { key, dir: 'desc' }];
-        } else if (current[existing].dir === 'desc') {
-          next = current.map((s, i) => i === existing ? { ...s, dir: 'asc' as const } : s);
+      if (existing === -1) {
+        if (current.length < 2) {
+          next = [...current, { key, dir: 'desc' as const }];
         } else {
-          next = current.filter((_, i) => i !== existing);
+          next = [current[0], { key, dir: 'desc' as const }];
         }
+      } else if (current[existing].dir === 'desc') {
+        next = current.map((s, i) => i === existing ? { ...s, dir: 'asc' as const } : s);
       } else {
-        if (existing === -1 || existing === 1) {
-          next = [{ key, dir: 'desc' }];
-        } else if (current[0].dir === 'desc') {
-          next = [{ key, dir: 'asc' }, ...current.slice(1)];
-        } else {
-          next = current.slice(1);
-        }
+        next = current.filter((_, i) => i !== existing);
       }
       setSort(next);
       setPage(1);
@@ -309,7 +302,7 @@
     applySort(filteredFuelList as unknown as Record<string, unknown>[], fuelSort)
   );
   const fuelTotalPages = $derived(Math.ceil(fuelSortedList.length / fuelPerPage));
-  const fuelShowPagination = $derived(fuelSortedList.length > 10);
+  const fuelShowPagination = $derived(fuelSortedList.length > 5);
   const fuelPagedList = $derived(fuelSortedList.slice((fuelPage - 1) * fuelPerPage, fuelPage * fuelPerPage));
   const fuelPageNumbers = $derived(makePageNumbers(fuelPage, fuelTotalPages));
 
@@ -318,7 +311,7 @@
     applySort(filteredMaintenanceList as unknown as Record<string, unknown>[], maintSort)
   );
   const maintTotalPages = $derived(Math.ceil(maintSortedList.length / maintPerPage));
-  const maintShowPagination = $derived(maintSortedList.length > 10);
+  const maintShowPagination = $derived(maintSortedList.length > 5);
   const maintPagedList = $derived(maintSortedList.slice((maintPage - 1) * maintPerPage, maintPage * maintPerPage));
   const maintPageNumbers = $derived(makePageNumbers(maintPage, maintTotalPages));
 
@@ -327,7 +320,7 @@
     applySort(filteredFinesList as unknown as Record<string, unknown>[], finesSort)
   );
   const finesTotalPages = $derived(Math.ceil(finesSortedList.length / finesPerPage));
-  const finesShowPagination = $derived(finesSortedList.length > 10);
+  const finesShowPagination = $derived(finesSortedList.length > 5);
   const finesPagedList = $derived(finesSortedList.slice((finesPage - 1) * finesPerPage, finesPage * finesPerPage));
   const finesPageNumbers = $derived(makePageNumbers(finesPage, finesTotalPages));
 
