@@ -37,7 +37,7 @@ func TestUpdateCarUsecase_Execute(t *testing.T) {
 	repo.AddCar(car.Car{ID: "3", Brand: "B", Model: "M", Year: 2021, VIN: "VIN3"})
 	uc := usecase.UpdateCarUsecase{Repo: repo}
 	updated := car.Car{ID: "3", Brand: "B2", Model: "M2", Year: 2022, VIN: "VIN3"}
-	err := uc.Execute(updated)
+	err := uc.Execute(updated, "user-1")
 	if err != nil {
 		t.Errorf("update failed: %v", err)
 	}
@@ -51,7 +51,7 @@ func TestDeleteCarUsecase_Execute(t *testing.T) {
 	repo := NewMockCarRepo()
 	repo.AddCar(car.Car{ID: "4", Brand: "B", Model: "M", Year: 2021, VIN: "VIN4"})
 	uc := usecase.DeleteCarUsecase{Repo: repo}
-	err := uc.Execute("4")
+	err := uc.Execute("4", "user-1")
 	if err != nil {
 		t.Errorf("delete failed: %v", err)
 	}
@@ -66,7 +66,7 @@ func TestListCarsUsecase_Execute(t *testing.T) {
 	repo.AddCar(car.Car{ID: "5", Brand: "B", Model: "M", Year: 2021, VIN: "VIN5"})
 	repo.AddCar(car.Car{ID: "6", Brand: "B2", Model: "M2", Year: 2022, VIN: "VIN6"})
 	uc := usecase.ListCarsUsecase{Repo: repo}
-	cars, err := uc.Execute()
+	cars, err := uc.Execute("user-1")
 	if err != nil || len(cars) != 2 {
 		t.Errorf("expected 2 cars, got %d, err %v", len(cars), err)
 	}

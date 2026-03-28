@@ -26,7 +26,7 @@ func (m *MockCarRepo) GetCar(id string) (car.Car, error) {
     return c, nil
 }
 
-func (m *MockCarRepo) UpdateCar(c car.Car) error {
+func (m *MockCarRepo) UpdateCar(c car.Car, userID string) error {
     if _, ok := m.Cars[c.ID]; !ok {
         return ErrNotFound
     }
@@ -34,7 +34,7 @@ func (m *MockCarRepo) UpdateCar(c car.Car) error {
     return nil
 }
 
-func (m *MockCarRepo) DeleteCar(id string) error {
+func (m *MockCarRepo) DeleteCar(id string, userID string) error {
     if _, ok := m.Cars[id]; !ok {
         return ErrNotFound
     }
@@ -42,7 +42,7 @@ func (m *MockCarRepo) DeleteCar(id string) error {
     return nil
 }
 
-func (m *MockCarRepo) ListCars() ([]car.Car, error) {
+func (m *MockCarRepo) ListCars(userID string) ([]car.Car, error) {
     out := make([]car.Car, 0, len(m.Cars))
     for _, c := range m.Cars {
         out = append(out, c)
@@ -70,14 +70,14 @@ func (m *mockCarRepoWithError) GetCar(id string) (car.Car, error) {
 	return car.Car{}, &MockError{"repo unavailable"}
 }
 
-func (m *mockCarRepoWithError) UpdateCar(c car.Car) error {
+func (m *mockCarRepoWithError) UpdateCar(c car.Car, userID string) error {
 	return &MockError{"repo unavailable"}
 }
 
-func (m *mockCarRepoWithError) DeleteCar(id string) error {
+func (m *mockCarRepoWithError) DeleteCar(id string, userID string) error {
 	return &MockError{"repo unavailable"}
 }
 
-func (m *mockCarRepoWithError) ListCars() ([]car.Car, error) {
+func (m *mockCarRepoWithError) ListCars(userID string) ([]car.Car, error) {
 	return nil, &MockError{"repo unavailable"}
 }

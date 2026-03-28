@@ -20,7 +20,7 @@ func setupCarHandler() *rest.CarHandler {
 
 func TestCarHandler_Update(t *testing.T) {
 	h := setupCarHandler()
-	_ = h.Add.Execute(car.Car{ID: "1", Brand: "A", Model: "M", Year: 2020, VIN: "VIN1"})
+	_ = h.Add.Execute(car.Car{ID: "1", Brand: "A", Model: "M", Year: 2020, VIN: "VIN1", UserID: "user-1"})
 	upd := car.Car{ID: "1", Brand: "B", Model: "X", Year: 2022, VIN: "VIN1"}
 	b, _ := json.Marshal(upd)
 	req := httptest.NewRequest("PUT", "/cars", bytes.NewReader(b))
@@ -38,7 +38,7 @@ func TestCarHandler_Update(t *testing.T) {
 
 func TestCarHandler_Delete(t *testing.T) {
 	h := setupCarHandler()
-	_ = h.Add.Execute(car.Car{ID: "1", Brand: "A", Model: "M", Year: 2020, VIN: "VIN1"})
+	_ = h.Add.Execute(car.Car{ID: "1", Brand: "A", Model: "M", Year: 2020, VIN: "VIN1", UserID: "user-1"})
 	req := httptest.NewRequest("DELETE", "/cars/1", nil)
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, req)
@@ -66,8 +66,8 @@ func TestCarHandler_BadRequest(t *testing.T) {
 
 func TestCarHandler_List_Success(t *testing.T) {
 	h := setupCarHandler()
-	_ = h.Add.Execute(car.Car{ID: "1", Brand: "A", Model: "M", Year: 2020, VIN: "VIN1"})
-	_ = h.Add.Execute(car.Car{ID: "2", Brand: "B", Model: "N", Year: 2021, VIN: "VIN2"})
+	_ = h.Add.Execute(car.Car{ID: "1", Brand: "A", Model: "M", Year: 2020, VIN: "VIN1", UserID: "user-1"})
+	_ = h.Add.Execute(car.Car{ID: "2", Brand: "B", Model: "N", Year: 2021, VIN: "VIN2", UserID: "user-1"})
 	req := httptest.NewRequest("GET", "/cars", nil)
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, req)

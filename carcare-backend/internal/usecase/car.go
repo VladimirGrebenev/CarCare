@@ -56,28 +56,28 @@ type UpdateCarUsecase struct {
 	Repo car.Repository
 }
 
-func (uc *UpdateCarUsecase) Execute(c car.Car) error {
+func (uc *UpdateCarUsecase) Execute(c car.Car, userID string) error {
 	if err := validateCar(c); err != nil {
 		return err
 	}
-	return uc.Repo.UpdateCar(c)
+	return uc.Repo.UpdateCar(c, userID)
 }
 
 type DeleteCarUsecase struct {
 	Repo car.Repository
 }
 
-func (uc *DeleteCarUsecase) Execute(id string) error {
+func (uc *DeleteCarUsecase) Execute(id string, userID string) error {
 	if strings.TrimSpace(id) == "" {
 		return errors.New("id is required")
 	}
-	return uc.Repo.DeleteCar(id)
+	return uc.Repo.DeleteCar(id, userID)
 }
 
 type ListCarsUsecase struct {
 	Repo car.Repository
 }
 
-func (uc *ListCarsUsecase) Execute() ([]car.Car, error) {
-	return uc.Repo.ListCars()
+func (uc *ListCarsUsecase) Execute(userID string) ([]car.Car, error) {
+	return uc.Repo.ListCars(userID)
 }

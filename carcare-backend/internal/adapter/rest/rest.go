@@ -59,6 +59,7 @@ func (h *CarHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *CarHandler) handleAdd(w http.ResponseWriter, r *http.Request) {
+	userID := getUserIDFromContext(r)
 	var c car.Car
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -72,6 +73,7 @@ func (h *CarHandler) handleAdd(w http.ResponseWriter, r *http.Request) {
 	if c.ID == "" {
 		c.ID = uuid.New().String()
 	}
+	c.UserID = userID
 	if err := h.Add.Execute(c); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -90,6 +92,7 @@ func (h *CarHandler) handleGet(w http.ResponseWriter, r *http.Request, id string
 }
 
 func (h *CarHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
+	userID := getUserIDFromContext(r)
 	var c car.Car
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -100,7 +103,7 @@ func (h *CarHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
-	if err := h.Update.Execute(c); err != nil {
+	if err := h.Update.Execute(c, userID); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -109,7 +112,8 @@ func (h *CarHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *CarHandler) handleDelete(w http.ResponseWriter, r *http.Request, id string) {
-	if err := h.Delete.Execute(id); err != nil {
+	userID := getUserIDFromContext(r)
+	if err := h.Delete.Execute(id, userID); err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
@@ -117,7 +121,8 @@ func (h *CarHandler) handleDelete(w http.ResponseWriter, r *http.Request, id str
 }
 
 func (h *CarHandler) handleList(w http.ResponseWriter, r *http.Request) {
-	cars, err := h.List.Execute()
+	userID := getUserIDFromContext(r)
+	cars, err := h.List.Execute(userID)
 	if err != nil || cars == nil {
 		cars = []car.Car{}
 	}

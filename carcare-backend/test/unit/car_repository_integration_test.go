@@ -30,7 +30,7 @@ func setupTestDB(t *testing.T) *sql.DB {
 func TestCarRepository_CRUD(t *testing.T) {
 	db := setupTestDB(t)
 	r := repo.NewCarRepository(db)
-	c := car.Car{ID: "uuid-1", Brand: "Toyota", Model: "Corolla", Year: 2020, VIN: "VIN-1"}
+	c := car.Car{ID: "uuid-1", UserID: "user-uuid-1", Brand: "Toyota", Model: "Corolla", Year: 2020, VIN: "VIN-1"}
 	// Create
 	if err := r.AddCar(c); err != nil {
 		t.Fatalf("AddCar: %v", err)
@@ -42,16 +42,16 @@ func TestCarRepository_CRUD(t *testing.T) {
 	}
 	// Update
 	c.Brand = "Honda"
-	if err := r.UpdateCar(c); err != nil {
+	if err := r.UpdateCar(c, c.UserID); err != nil {
 		t.Fatalf("UpdateCar: %v", err)
 	}
 	// List
-	cars, err := r.ListCars()
+	cars, err := r.ListCars(c.UserID)
 	if err != nil || len(cars) == 0 {
 		t.Fatalf("ListCars: %v", err)
 	}
 	// Delete
-	if err := r.DeleteCar(c.ID); err != nil {
+	if err := r.DeleteCar(c.ID, c.UserID); err != nil {
 		t.Fatalf("DeleteCar: %v", err)
 	}
 }
