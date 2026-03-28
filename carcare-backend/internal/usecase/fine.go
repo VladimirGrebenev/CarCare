@@ -38,6 +38,6 @@ type ListFinesUsecase struct {
 	Repo fine.Repository
 }
 
-func (uc *ListFinesUsecase) Execute() ([]fine.Fine, error) {
-	return uc.Repo.ListFines()
+func (uc *ListFinesUsecase) Execute(userID string) ([]fine.Fine, error) {
+	return uc.Repo.ListFines(userID)
 }

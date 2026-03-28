@@ -4,10 +4,9 @@
   type Props = {
     active?: string;
     onNavigate?: ((path: string) => void) | null;
-    onToggleTheme?: (() => void) | null;
   };
 
-  let { active = '', onNavigate = null, onToggleTheme = null }: Props = $props();
+  let { active = '', onNavigate = null }: Props = $props();
 
   const nav = [
     { path: '/',            label: 'Главная',   icon: '⊞' },

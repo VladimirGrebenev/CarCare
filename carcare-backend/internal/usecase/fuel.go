@@ -41,6 +41,6 @@ type ListFuelEventsUsecase struct {
 	Repo fuel.Repository
 }
 
-func (uc *ListFuelEventsUsecase) Execute() ([]fuel.FuelEvent, error) {
-	return uc.Repo.ListFuelEvents()
+func (uc *ListFuelEventsUsecase) Execute(userID string) ([]fuel.FuelEvent, error) {
+	return uc.Repo.ListFuelEvents(userID)
 }

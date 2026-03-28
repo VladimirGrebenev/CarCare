@@ -32,9 +32,10 @@ func TestFineRepository_ListFines(t *testing.T) {
 	defer cleanup()
 	rows := sqlmock.NewRows([]string{"id", "car_id", "amount", "type", "date", "status", "description"}).
 		AddRow("1", "1", 500.0, "speeding", "2026-03-22", "unpaid", "превышение скорости")
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, car_id, amount, type, date, status, description FROM fines")).
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT f.id, f.car_id, f.amount, f.type, f.date, f.status, f.description FROM fines f JOIN cars c ON c.id = f.car_id WHERE c.user_id = $1")).
+		WithArgs("user-1").
 		WillReturnRows(rows)
-	fines, err := repo.ListFines()
+	fines, err := repo.ListFines("user-1")
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}

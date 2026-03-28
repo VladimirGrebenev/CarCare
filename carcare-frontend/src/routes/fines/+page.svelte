@@ -8,7 +8,7 @@
   import Input from '../../components/ui/Input.svelte';
   import Toast from '../../components/ui/Toast.svelte';
   import {
-    finesLoading, finesError, finesFilters,
+    finesLoading, finesError,
     filteredFinesList, loadFines, createFine, editFine, removeFine
   } from '../../stores/fines';
   import type { Fine } from '../../lib/types';
@@ -50,8 +50,62 @@
       _car: getCarLabel(String(f.carId ?? '')),
       _amount: Number(f.amount).toLocaleString('ru-RU', { minimumFractionDigits: 2 }) + ' ₽',
       _statusBadge: f.status === 'paid' ? 'paid' : 'unpaid',
+      _dateRaw: f.date ?? '',
+      _amountNum: Number(f.amount),
     }))
   );
+
+  // Sorting state
+  let sortState = $state<Array<{ key: string; dir: 'asc' | 'desc' }>>([
+    { key: '_dateRaw', dir: 'desc' }
+  ]);
+
+  function handleSort(key: string, _event: MouseEvent) {
+    const existing = sortState.findIndex(s => s.key === key);
+    if (existing === -1) {
+      if (sortState.length < 2) {
+        sortState = [...sortState, { key, dir: 'desc' as const }];
+      } else {
+        sortState = [sortState[0], { key, dir: 'desc' as const }];
+      }
+    } else if (sortState[existing].dir === 'desc') {
+      sortState = sortState.map((s, i) => i === existing ? { ...s, dir: 'asc' as const } : s);
+    } else {
+      sortState = sortState.filter((_, i) => i !== existing);
+    }
+    page = 1;
+  }
+
+  function applySorting<T extends Record<string, unknown>>(arr: T[]): T[] {
+    if (sortState.length === 0) return arr;
+    return [...arr].sort((a, b) => {
+      for (const { key, dir } of sortState) {
+        const av = a[key] ?? '';
+        const bv = b[key] ?? '';
+        const an = Number(av), bn = Number(bv);
+        let cmp = 0;
+        if (!isNaN(an) && !isNaN(bn) && String(av) !== '' && String(bv) !== '') {
+          cmp = an - bn;
+        } else {
+          cmp = String(av).localeCompare(String(bv), 'ru');
+        }
+        if (cmp !== 0) return dir === 'asc' ? cmp : -cmp;
+      }
+      return 0;
+    });
+  }
+
+  // Visible sort state for Table
+  let tableSortState = $derived(
+    sortState.map(s => ({ ...s, key: s.key === '_dateRaw' ? '_date' : s.key === '_amountNum' ? '_amount' : s.key }))
+  );
+
+  function handleTableSort(key: string, event: MouseEvent) {
+    const internalKey = key === '_date' ? '_dateRaw' : key === '_amount' ? '_amountNum' : key;
+    handleSort(internalKey, event);
+  }
+
+  const SORT_KEYS = ['_date', '_car', 'description', '_amount'];
 
   let showModal = $state(false);
   let editingId = $state<string | null>(null);
@@ -76,17 +130,60 @@
 
   let filterStatus = $state('');
   let filterSearch = $state('');
+  let filterCarId = $state('');
+
+  // Pagination state
+  let page = $state(1);
+  let perPage = $state(5);
+  const PER_PAGE_OPTIONS = [5, 10, 25];
 
   let displayRows = $derived(
     rows.filter(r => {
       const matchStatus = !filterStatus || r._statusBadge === filterStatus;
+      const matchCar = !filterCarId || String(r.carId ?? '') === filterCarId;
       const search = filterSearch.toLowerCase();
       const matchSearch = !search ||
         String(r.description ?? '').toLowerCase().includes(search) ||
         String(r._car ?? '').toLowerCase().includes(search);
-      return matchStatus && matchSearch;
+      return matchStatus && matchCar && matchSearch;
     })
   );
+
+  // Pagination derived values
+  let sortedRows = $derived(applySorting(displayRows));
+  let totalPages = $derived(Math.ceil(sortedRows.length / perPage));
+  let showPagination = $derived(sortedRows.length > 5);
+  let pagedRows = $derived(sortedRows.slice((page - 1) * perPage, page * perPage));
+
+  let pageNumbers = $derived((() => {
+    if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const nums: (number | '...')[] = [];
+    if (page <= 3) {
+      nums.push(1, 2, 3, 4, '...', totalPages);
+    } else if (page >= totalPages - 2) {
+      nums.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+    } else {
+      nums.push(1, '...', page - 1, page, page + 1, '...', totalPages);
+    }
+    return nums;
+  })());
+
+  function setPage(p: number) {
+    page = Math.max(1, Math.min(p, totalPages));
+  }
+
+  function setPerPage(value: number) {
+    perPage = value;
+    page = 1;
+  }
+
+  // Reset page when filters change
+  $effect(() => {
+    void filterStatus;
+    void filterSearch;
+    void filterCarId;
+    page = 1;
+  });
 
   function openAdd() {
     editingId = null;
@@ -163,12 +260,29 @@
 </script>
 
 <PageLayout title="Штрафы">
-  <div class="page-toolbar">
+  {#snippet toolbar()}
     <div class="filters">
-      <Input
-        placeholder="Поиск по описанию или авто..."
-        bind:value={filterSearch}
-      />
+      <div class="filter-field">
+        <label class="filter-label" for="fines-search">Поиск</label>
+        <Input
+          id="fines-search"
+          placeholder="Поиск по описанию или авто..."
+          bind:value={filterSearch}
+        />
+      </div>
+      <div class="filter-field">
+        <label class="filter-label" for="fines-filter-car">Автомобиль</label>
+        <select
+          id="fines-filter-car"
+          class="field-select"
+          bind:value={filterCarId}
+        >
+          <option value="">Все автомобили</option>
+          {#each cars as car}
+            <option value={car.id}>{car.brand} {car.model} ({car.plate})</option>
+          {/each}
+        </select>
+      </div>
       <div class="filter-field">
         <label class="filter-label" for="fines-filter-status">Статус</label>
         <select
@@ -183,15 +297,18 @@
       </div>
     </div>
     <Button variant="primary" onclick={openAdd}>+ Добавить</Button>
-  </div>
+  {/snippet}
 
   <Table
     columns={COLUMNS}
-    rows={displayRows}
+    rows={pagedRows}
     loading={$finesLoading}
     error={$finesError ?? ''}
     emptyText="Нет записей о штрафах"
     onRowClick={openEdit}
+    sortKeys={SORT_KEYS}
+    sort={tableSortState}
+    onSort={handleTableSort}
   >
     {#snippet actions(row)}
       <div class="row-actions">
@@ -229,6 +346,38 @@
       </div>
     {/snippet}
   </Table>
+
+  {#if showPagination}
+    <div class="pagination-bar">
+      <span class="pagination-info">
+        Показано {Math.min((page - 1) * perPage + 1, sortedRows.length)}–{Math.min(page * perPage, sortedRows.length)} из {sortedRows.length}
+      </span>
+      <div class="per-page-group">
+        {#each PER_PAGE_OPTIONS as opt}
+          <button
+            class="page-btn"
+            class:active={perPage === opt}
+            onclick={() => setPerPage(opt)}
+          >{opt}</button>
+        {/each}
+      </div>
+      <div class="page-nav">
+        <button class="page-btn nav-btn" disabled={page === 1} onclick={() => setPage(page - 1)}>←</button>
+        {#each pageNumbers as p}
+          {#if p === '...'}
+            <span class="page-ellipsis">…</span>
+          {:else}
+            <button
+              class="page-btn"
+              class:active={page === p}
+              onclick={() => setPage(p as number)}
+            >{p}</button>
+          {/if}
+        {/each}
+        <button class="page-btn nav-btn" disabled={page === totalPages} onclick={() => setPage(page + 1)}>→</button>
+      </div>
+    </div>
+  {/if}
 
   <Modal
     open={showModal}
@@ -293,17 +442,10 @@
 </PageLayout>
 
 <style>
-.page-toolbar {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-}
 .filters { display: flex; gap: 0.75rem; flex: 1; flex-wrap: wrap; align-items: flex-end; }
 
 .filter-field { display: flex; flex-direction: column; gap: 0.375rem; }
+.filter-label { font-size: 0.8125rem; font-weight: 600; color: var(--text-secondary); }
 
 .form-grid {
   display: grid;
@@ -380,4 +522,62 @@
 }
 .edit-btn:hover { background: var(--accent-light); color: var(--accent-text); border-color: rgba(0,120,212,0.4); }
 .delete-btn:hover { background: var(--danger-light); color: var(--danger); border-color: var(--danger); }
+
+/* Pagination */
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.pagination-info {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.per-page-group,
+.page-nav {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.page-btn {
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+.page-btn:hover:not(:disabled):not(.active) {
+  background: var(--bg-layer);
+  color: var(--text-primary);
+}
+.page-btn.active {
+  background: var(--accent-light);
+  color: var(--accent-text);
+  border-color: rgba(0, 120, 212, 0.4);
+  font-weight: 600;
+}
+.page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.nav-btn { font-size: 1rem; }
+.page-ellipsis {
+  padding: 0 0.25rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 2rem;
+}
 </style>

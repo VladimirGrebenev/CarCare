@@ -20,6 +20,7 @@
     liters: number;
     price: number;
     fuelType?: string;
+    carId?: string;
   };
 
   type MaintenanceEvent = {
@@ -66,6 +67,107 @@
   type Tab = 'overview' | 'fuel' | 'maintenance' | 'fines';
   let activeTab = $state<Tab>('overview');
 
+  // Pagination per tab
+  const PER_PAGE_OPTIONS = [5, 10, 25];
+
+  let fuelPage = $state(1);
+  let fuelPerPage = $state(5);
+  let maintPage = $state(1);
+  let maintPerPage = $state(5);
+  let finesPage = $state(1);
+  let finesPerPage = $state(5);
+
+  // Sort state per tab
+  type SortEntry = { key: string; dir: 'asc' | 'desc' };
+
+  let fuelSort = $state<SortEntry[]>([{ key: 'date', dir: 'desc' }]);
+  let maintSort = $state<SortEntry[]>([{ key: 'date', dir: 'desc' }]);
+  let finesSort = $state<SortEntry[]>([{ key: 'date', dir: 'desc' }]);
+
+  function makeHandleSort(
+    getSort: () => SortEntry[],
+    setSort: (v: SortEntry[]) => void,
+    setPage: (p: number) => void
+  ) {
+    return (key: string, _event: MouseEvent) => {
+      const current = getSort();
+      const existing = current.findIndex(s => s.key === key);
+      let next: SortEntry[];
+      if (existing === -1) {
+        if (current.length < 2) {
+          next = [...current, { key, dir: 'desc' as const }];
+        } else {
+          next = [current[0], { key, dir: 'desc' as const }];
+        }
+      } else if (current[existing].dir === 'desc') {
+        next = current.map((s, i) => i === existing ? { ...s, dir: 'asc' as const } : s);
+      } else {
+        next = current.filter((_, i) => i !== existing);
+      }
+      setSort(next);
+      setPage(1);
+    };
+  }
+
+  const handleFuelSort = makeHandleSort(
+    () => fuelSort,
+    (v) => { fuelSort = v; },
+    (p) => { fuelPage = p; }
+  );
+  const handleMaintSort = makeHandleSort(
+    () => maintSort,
+    (v) => { maintSort = v; },
+    (p) => { maintPage = p; }
+  );
+  const handleFinesSort = makeHandleSort(
+    () => finesSort,
+    (v) => { finesSort = v; },
+    (p) => { finesPage = p; }
+  );
+
+  function applySort<T extends Record<string, unknown>>(arr: T[], sort: SortEntry[]): T[] {
+    if (sort.length === 0) return arr;
+    return [...arr].sort((a, b) => {
+      for (const { key, dir } of sort) {
+        const av = a[key] ?? '';
+        const bv = b[key] ?? '';
+        const an = Number(av), bn = Number(bv);
+        let cmp = 0;
+        if (!isNaN(an) && !isNaN(bn) && String(av) !== '' && String(bv) !== '') {
+          cmp = an - bn;
+        } else {
+          cmp = String(av).localeCompare(String(bv), 'ru');
+        }
+        if (cmp !== 0) return dir === 'asc' ? cmp : -cmp;
+      }
+      return 0;
+    });
+  }
+
+  function getSortIcon(sort: SortEntry[], key: string): string {
+    const s = sort.find(e => e.key === key);
+    if (!s) return '↕';
+    return s.dir === 'desc' ? '↓' : '↑';
+  }
+
+  function getSortRank(sort: SortEntry[], key: string): number | null {
+    const idx = sort.findIndex(s => s.key === key);
+    return idx === -1 ? null : idx + 1;
+  }
+
+  function makePageNumbers(page: number, totalPages: number): (number | '...')[] {
+    if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const nums: (number | '...')[] = [];
+    if (page <= 3) {
+      nums.push(1, 2, 3, 4, '...', totalPages);
+    } else if (page >= totalPages - 2) {
+      nums.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+    } else {
+      nums.push(1, '...', page - 1, page, page + 1, '...', totalPages);
+    }
+    return nums;
+  }
+
   let loading = $state(true);
   let error = $state<string | null>(null);
 
@@ -81,6 +183,24 @@
     maintenance_count: 0,
     fines_count: 0,
   });
+
+  // Car filter
+  let filterCarId = $state('');
+
+  // Tooltip state
+  let tooltip = $state({ visible: false, x: 0, y: 0, text: '' });
+
+  function showTooltip(e: MouseEvent, text: string) {
+    tooltip = { visible: true, x: e.clientX + 12, y: e.clientY - 8, text };
+  }
+  function moveTooltip(e: MouseEvent) {
+    if (tooltip.visible) {
+      tooltip = { ...tooltip, x: e.clientX + 12, y: e.clientY - 8 };
+    }
+  }
+  function hideTooltip() {
+    tooltip = { ...tooltip, visible: false };
+  }
 
   // View/Period state
   let fuelView = $state<ViewMode>('table');
@@ -104,16 +224,27 @@
     return Number(e.liters) * Number(e.price);
   }
 
+  // Filtered by car
+  const filteredFuelList = $derived(
+    filterCarId ? fuelList.filter(e => e.carId === filterCarId) : fuelList
+  );
+  const filteredMaintenanceList = $derived(
+    filterCarId ? maintenanceList.filter(e => e.carId === filterCarId) : maintenanceList
+  );
+  const filteredFinesList = $derived(
+    filterCarId ? finesList.filter(e => e.carId === filterCarId) : finesList
+  );
+
   const fuelTotal = $derived(
-    fuelList.reduce((sum, e) => sum + fuelCost(e), 0)
+    filteredFuelList.reduce((sum, e) => sum + fuelCost(e), 0)
   );
 
   const maintenanceTotal = $derived(
-    maintenanceList.reduce((sum, e) => sum + (Number(e.cost) || 0), 0)
+    filteredMaintenanceList.reduce((sum, e) => sum + (Number(e.cost) || 0), 0)
   );
 
   const finesTotal = $derived(
-    finesList.reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
+    filteredFinesList.reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
   );
 
   const grandTotal = $derived(fuelTotal + maintenanceTotal + finesTotal);
@@ -155,14 +286,52 @@
   }
 
   const fuelChartData = $derived(
-    groupByDay(fuelList, e => fuelCost(e), fuelPeriod, fuelDateFrom, fuelDateTo)
+    groupByDay(filteredFuelList, e => fuelCost(e), fuelPeriod, fuelDateFrom, fuelDateTo)
   );
   const maintenanceChartData = $derived(
-    groupByDay(maintenanceList, e => Number(e.cost) || 0, maintenancePeriod, maintenanceDateFrom, maintenanceDateTo)
+    groupByDay(filteredMaintenanceList, e => Number(e.cost) || 0, maintenancePeriod, maintenanceDateFrom, maintenanceDateTo)
   );
   const finesChartData = $derived(
-    groupByDay(finesList, e => Number(e.amount) || 0, finesPeriod, finesDateFrom, finesDateTo)
+    groupByDay(filteredFinesList, e => Number(e.amount) || 0, finesPeriod, finesDateFrom, finesDateTo)
   );
+
+  // ── Sorted + paged lists for tab tables ─────────────────────────────────────
+
+  // Fuel tab
+  const fuelSortedList = $derived(
+    applySort(filteredFuelList as unknown as Record<string, unknown>[], fuelSort)
+  );
+  const fuelTotalPages = $derived(Math.ceil(fuelSortedList.length / fuelPerPage));
+  const fuelShowPagination = $derived(fuelSortedList.length > 5);
+  const fuelPagedList = $derived(fuelSortedList.slice((fuelPage - 1) * fuelPerPage, fuelPage * fuelPerPage));
+  const fuelPageNumbers = $derived(makePageNumbers(fuelPage, fuelTotalPages));
+
+  // Maintenance tab
+  const maintSortedList = $derived(
+    applySort(filteredMaintenanceList as unknown as Record<string, unknown>[], maintSort)
+  );
+  const maintTotalPages = $derived(Math.ceil(maintSortedList.length / maintPerPage));
+  const maintShowPagination = $derived(maintSortedList.length > 5);
+  const maintPagedList = $derived(maintSortedList.slice((maintPage - 1) * maintPerPage, maintPage * maintPerPage));
+  const maintPageNumbers = $derived(makePageNumbers(maintPage, maintTotalPages));
+
+  // Fines tab
+  const finesSortedList = $derived(
+    applySort(filteredFinesList as unknown as Record<string, unknown>[], finesSort)
+  );
+  const finesTotalPages = $derived(Math.ceil(finesSortedList.length / finesPerPage));
+  const finesShowPagination = $derived(finesSortedList.length > 5);
+  const finesPagedList = $derived(finesSortedList.slice((finesPage - 1) * finesPerPage, finesPage * finesPerPage));
+  const finesPageNumbers = $derived(makePageNumbers(finesPage, finesTotalPages));
+
+  // Reset pages when tab or car filter changes
+  $effect(() => {
+    void activeTab;
+    void filterCarId;
+    fuelPage = 1;
+    maintPage = 1;
+    finesPage = 1;
+  });
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -244,7 +413,8 @@
   {@const h = 200}
   {@const pad = 40}
   {@const barW = Math.max(2, (w - pad * 2) / data.length - 2)}
-  <div class="bar-chart-wrap">
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div class="bar-chart-wrap" onmousemove={moveTooltip}>
     <svg viewBox="0 0 {w} {h + pad}" class="bar-svg">
       {#each [0, 0.25, 0.5, 0.75, 1] as frac}
         {@const y = pad + (h - h * frac)}
@@ -257,7 +427,13 @@
         {@const x = pad + i * ((w - pad * 2) / data.length)}
         {@const barH = point.value > 0 ? Math.max(2, (point.value / maxVal) * h) : 0}
         {@const y = pad + h - barH}
-        <rect x={x} y={y} width={barW} height={barH} fill={color} rx="2" opacity="0.85"/>
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <rect
+          x={x} y={y} width={barW} height={barH} fill={color} rx="2" opacity="0.85"
+          style="cursor: pointer"
+          onmouseenter={(e) => showTooltip(e, `${point.day} — ${point.value.toLocaleString('ru-RU')} ₽`)}
+          onmouseleave={hideTooltip}
+        />
         {#if data.length <= 14}
           <text x={x + barW / 2} y={h + pad + 12} text-anchor="middle" font-size="9" fill="var(--text-secondary)">
             {point.day.slice(5)}
@@ -269,6 +445,31 @@
 {/snippet}
 
 <PageLayout title="Отчёты и статистика">
+  <!-- Tooltip -->
+  {#if tooltip.visible}
+    <div
+      class="chart-tooltip"
+      style="left:{tooltip.x}px; top:{tooltip.y}px"
+    >{tooltip.text}</div>
+  {/if}
+
+  <!-- Filter bar -->
+  <div class="report-filters">
+    <div class="filter-field">
+      <label class="filter-label" for="report-filter-car">Автомобиль</label>
+      <select
+        id="report-filter-car"
+        class="field-select-sm"
+        bind:value={filterCarId}
+      >
+        <option value="">Все автомобили</option>
+        {#each carsList as car}
+          <option value={car.id}>{car.brand} {car.model}{car.plate ? ` (${car.plate})` : ''}</option>
+        {/each}
+      </select>
+    </div>
+  </div>
+
   <!-- Tabs nav -->
   <div class="tabs-nav" role="tablist">
     {#each ([
@@ -308,17 +509,17 @@
           <div class="summary-card" style="--card-color: var(--accent);">
             <div class="summary-label">Топливо</div>
             <div class="summary-value">{fmt(fuelTotal)}</div>
-            <div class="summary-sub">{fuelList.length} заправок</div>
+            <div class="summary-sub">{filteredFuelList.length} заправок</div>
           </div>
           <div class="summary-card" style="--card-color: var(--success);">
             <div class="summary-label">ТО</div>
             <div class="summary-value">{fmt(maintenanceTotal)}</div>
-            <div class="summary-sub">{maintenanceList.length} записей</div>
+            <div class="summary-sub">{filteredMaintenanceList.length} записей</div>
           </div>
           <div class="summary-card" style="--card-color: var(--danger);">
             <div class="summary-label">Штрафы</div>
             <div class="summary-value">{fmt(finesTotal)}</div>
-            <div class="summary-sub">{finesList.length} штрафов</div>
+            <div class="summary-sub">{filteredFinesList.length} штрафов</div>
           </div>
         </div>
 
@@ -339,7 +540,8 @@
           {@const pieTotal = slices.reduce((s, sl) => s + sl.value, 0)}
           <div class="chart-section">
             <h3 class="section-title">Распределение расходов</h3>
-            <div class="pie-wrap">
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div class="pie-wrap" onmousemove={moveTooltip}>
               <svg viewBox="-1 -1 2 2" class="pie-svg" style="transform: rotate(-90deg)">
                 {#each slices as slice, i}
                   {@const startAngle = slices.slice(0, i).reduce((s, sl) => s + sl.value / pieTotal * Math.PI * 2, 0)}
@@ -349,11 +551,14 @@
                   {@const x2 = Math.cos(endAngle)}
                   {@const y2 = Math.sin(endAngle)}
                   {@const largeArc = slice.value / pieTotal > 0.5 ? 1 : 0}
+                  <!-- svelte-ignore a11y_no_static_element_interactions -->
                   <path
                     d="M 0 0 L {x1} {y1} A 1 1 0 {largeArc} 1 {x2} {y2} Z"
                     fill={slice.color}
                     opacity="0.9"
                     class="pie-slice"
+                    onmouseenter={(e) => showTooltip(e, `${slice.label} — ${slice.value.toLocaleString('ru-RU')} ₽ (${(slice.value / pieTotal * 100).toFixed(0)}%)`)}
+                    onmouseleave={hideTooltip}
                   />
                 {/each}
               </svg>
@@ -402,28 +607,45 @@
             </div>
           {/if}
         </div>
-        {#if fuelList.length === 0}
+        {#if filteredFuelList.length === 0}
           <EmptyState message="Нет данных о заправках." />
         {:else if fuelView === 'table'}
           <div class="table-wrap">
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>Дата</th>
-                  <th>Тип топлива</th>
-                  <th>Объём, л</th>
-                  <th>Цена за л</th>
-                  <th>Сумма</th>
+                  {#each ([
+                    { key: 'date', label: 'Дата' },
+                    { key: 'fuelType', label: 'Тип топлива' },
+                    { key: 'liters', label: 'Объём, л' },
+                    { key: 'price', label: 'Цена за л' },
+                    { key: '_cost', label: 'Сумма' },
+                  ] as const) as col}
+                    <th
+                      class="sortable-th"
+                      class:th-sort-primary={getSortRank(fuelSort, col.key) === 1}
+                      class:th-sort-secondary={getSortRank(fuelSort, col.key) === 2}
+                      onclick={(e) => handleFuelSort(col.key, e)}
+                      title="Сортировать (Shift+клик — вторичная)"
+                    >
+                      {col.label}
+                      <span class="th-icon"
+                        class:th-icon-primary={getSortRank(fuelSort, col.key) === 1}
+                        class:th-icon-secondary={getSortRank(fuelSort, col.key) === 2}
+                      >{getSortIcon(fuelSort, col.key)}{#if getSortRank(fuelSort, col.key) === 2}<sup>2</sup>{/if}</span>
+                    </th>
+                  {/each}
                 </tr>
               </thead>
               <tbody>
-                {#each fuelList as e}
+                {#each fuelPagedList as e}
+                  {@const fuelEvent = e as unknown as FuelEvent}
                   <tr>
-                    <td>{fmtDate(e.date)}</td>
-                    <td>{FUEL_TYPE_LABELS[e.fuelType ?? ''] ?? e.fuelType ?? '—'}</td>
-                    <td>{Number(e.liters).toLocaleString('ru-RU')}</td>
-                    <td>{fmt(Number(e.price))}</td>
-                    <td class="amount-cell">{fmt(fuelCost(e))}</td>
+                    <td>{fmtDate(fuelEvent.date)}</td>
+                    <td>{FUEL_TYPE_LABELS[fuelEvent.fuelType ?? ''] ?? fuelEvent.fuelType ?? '—'}</td>
+                    <td>{Number(fuelEvent.liters).toLocaleString('ru-RU')}</td>
+                    <td>{fmt(Number(fuelEvent.price))}</td>
+                    <td class="amount-cell">{fmt(fuelCost(fuelEvent))}</td>
                   </tr>
                 {/each}
               </tbody>
@@ -435,6 +657,29 @@
               </tfoot>
             </table>
           </div>
+          {#if fuelShowPagination}
+            <div class="pagination-bar">
+              <span class="pagination-info">
+                Показано {Math.min((fuelPage - 1) * fuelPerPage + 1, fuelSortedList.length)}–{Math.min(fuelPage * fuelPerPage, fuelSortedList.length)} из {fuelSortedList.length}
+              </span>
+              <div class="per-page-group">
+                {#each PER_PAGE_OPTIONS as opt}
+                  <button class="page-btn" class:active={fuelPerPage === opt} onclick={() => { fuelPerPage = opt; fuelPage = 1; }}>{opt}</button>
+                {/each}
+              </div>
+              <div class="page-nav">
+                <button class="page-btn nav-btn" disabled={fuelPage === 1} onclick={() => fuelPage = Math.max(1, fuelPage - 1)}>←</button>
+                {#each fuelPageNumbers as p}
+                  {#if p === '...'}
+                    <span class="page-ellipsis">…</span>
+                  {:else}
+                    <button class="page-btn" class:active={fuelPage === p} onclick={() => fuelPage = p as number}>{p}</button>
+                  {/if}
+                {/each}
+                <button class="page-btn nav-btn" disabled={fuelPage === fuelTotalPages} onclick={() => fuelPage = Math.min(fuelTotalPages, fuelPage + 1)}>→</button>
+              </div>
+            </div>
+          {/if}
         {:else}
           {@render barChart(fuelChartData, '#0078d4')}
         {/if}
@@ -466,26 +711,43 @@
             </div>
           {/if}
         </div>
-        {#if maintenanceList.length === 0}
+        {#if filteredMaintenanceList.length === 0}
           <EmptyState message="Нет данных о техобслуживании." />
         {:else if maintenanceView === 'table'}
           <div class="table-wrap">
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>Дата</th>
-                  <th>Автомобиль</th>
-                  <th>Тип работ</th>
-                  <th>Стоимость</th>
+                  {#each ([
+                    { key: 'date', label: 'Дата' },
+                    { key: 'carId', label: 'Автомобиль' },
+                    { key: 'type', label: 'Тип работ' },
+                    { key: 'cost', label: 'Стоимость' },
+                  ] as const) as col}
+                    <th
+                      class="sortable-th"
+                      class:th-sort-primary={getSortRank(maintSort, col.key) === 1}
+                      class:th-sort-secondary={getSortRank(maintSort, col.key) === 2}
+                      onclick={(e) => handleMaintSort(col.key, e)}
+                      title="Сортировать (Shift+клик — вторичная)"
+                    >
+                      {col.label}
+                      <span class="th-icon"
+                        class:th-icon-primary={getSortRank(maintSort, col.key) === 1}
+                        class:th-icon-secondary={getSortRank(maintSort, col.key) === 2}
+                      >{getSortIcon(maintSort, col.key)}{#if getSortRank(maintSort, col.key) === 2}<sup>2</sup>{/if}</span>
+                    </th>
+                  {/each}
                 </tr>
               </thead>
               <tbody>
-                {#each maintenanceList as e}
+                {#each maintPagedList as e}
+                  {@const me = e as unknown as MaintenanceEvent}
                   <tr>
-                    <td>{fmtDate(e.date)}</td>
-                    <td>{getCarLabel(String(e.carId ?? ''))}</td>
-                    <td>{e.type ?? '—'}</td>
-                    <td class="amount-cell">{fmt(Number(e.cost))}</td>
+                    <td>{fmtDate(me.date)}</td>
+                    <td>{getCarLabel(String(me.carId ?? ''))}</td>
+                    <td>{me.type ?? '—'}</td>
+                    <td class="amount-cell">{fmt(Number(me.cost))}</td>
                   </tr>
                 {/each}
               </tbody>
@@ -497,6 +759,29 @@
               </tfoot>
             </table>
           </div>
+          {#if maintShowPagination}
+            <div class="pagination-bar">
+              <span class="pagination-info">
+                Показано {Math.min((maintPage - 1) * maintPerPage + 1, maintSortedList.length)}–{Math.min(maintPage * maintPerPage, maintSortedList.length)} из {maintSortedList.length}
+              </span>
+              <div class="per-page-group">
+                {#each PER_PAGE_OPTIONS as opt}
+                  <button class="page-btn" class:active={maintPerPage === opt} onclick={() => { maintPerPage = opt; maintPage = 1; }}>{opt}</button>
+                {/each}
+              </div>
+              <div class="page-nav">
+                <button class="page-btn nav-btn" disabled={maintPage === 1} onclick={() => maintPage = Math.max(1, maintPage - 1)}>←</button>
+                {#each maintPageNumbers as p}
+                  {#if p === '...'}
+                    <span class="page-ellipsis">…</span>
+                  {:else}
+                    <button class="page-btn" class:active={maintPage === p} onclick={() => maintPage = p as number}>{p}</button>
+                  {/if}
+                {/each}
+                <button class="page-btn nav-btn" disabled={maintPage === maintTotalPages} onclick={() => maintPage = Math.min(maintTotalPages, maintPage + 1)}>→</button>
+              </div>
+            </div>
+          {/if}
         {:else}
           {@render barChart(maintenanceChartData, '#3fb950')}
         {/if}
@@ -528,32 +813,49 @@
             </div>
           {/if}
         </div>
-        {#if finesList.length === 0}
+        {#if filteredFinesList.length === 0}
           <EmptyState message="Нет данных о штрафах." />
         {:else if finesView === 'table'}
           <div class="table-wrap">
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>Дата</th>
-                  <th>Автомобиль</th>
-                  <th>Нарушение</th>
-                  <th>Статус</th>
-                  <th>Сумма</th>
+                  {#each ([
+                    { key: 'date', label: 'Дата' },
+                    { key: 'carId', label: 'Автомобиль' },
+                    { key: 'description', label: 'Нарушение' },
+                    { key: 'status', label: 'Статус' },
+                    { key: 'amount', label: 'Сумма' },
+                  ] as const) as col}
+                    <th
+                      class="sortable-th"
+                      class:th-sort-primary={getSortRank(finesSort, col.key) === 1}
+                      class:th-sort-secondary={getSortRank(finesSort, col.key) === 2}
+                      onclick={(e) => handleFinesSort(col.key, e)}
+                      title="Сортировать (Shift+клик — вторичная)"
+                    >
+                      {col.label}
+                      <span class="th-icon"
+                        class:th-icon-primary={getSortRank(finesSort, col.key) === 1}
+                        class:th-icon-secondary={getSortRank(finesSort, col.key) === 2}
+                      >{getSortIcon(finesSort, col.key)}{#if getSortRank(finesSort, col.key) === 2}<sup>2</sup>{/if}</span>
+                    </th>
+                  {/each}
                 </tr>
               </thead>
               <tbody>
-                {#each finesList as e}
+                {#each finesPagedList as e}
+                  {@const fe = e as unknown as Fine}
                   <tr>
-                    <td>{fmtDate(e.date)}</td>
-                    <td>{getCarLabel(String(e.carId ?? ''))}</td>
-                    <td>{e.description || e.type || '—'}</td>
+                    <td>{fmtDate(fe.date)}</td>
+                    <td>{getCarLabel(String(fe.carId ?? ''))}</td>
+                    <td>{fe.description || fe.type || '—'}</td>
                     <td>
-                      <span class="badge" class:badge-paid={e.status === 'paid'} class:badge-unpaid={e.status !== 'paid'}>
-                        {e.status === 'paid' ? 'Оплачен' : 'Не оплачен'}
+                      <span class="badge" class:badge-paid={fe.status === 'paid'} class:badge-unpaid={fe.status !== 'paid'}>
+                        {fe.status === 'paid' ? 'Оплачен' : 'Не оплачен'}
                       </span>
                     </td>
-                    <td class="amount-cell">{fmt(Number(e.amount))}</td>
+                    <td class="amount-cell">{fmt(Number(fe.amount))}</td>
                   </tr>
                 {/each}
               </tbody>
@@ -565,6 +867,29 @@
               </tfoot>
             </table>
           </div>
+          {#if finesShowPagination}
+            <div class="pagination-bar">
+              <span class="pagination-info">
+                Показано {Math.min((finesPage - 1) * finesPerPage + 1, finesSortedList.length)}–{Math.min(finesPage * finesPerPage, finesSortedList.length)} из {finesSortedList.length}
+              </span>
+              <div class="per-page-group">
+                {#each PER_PAGE_OPTIONS as opt}
+                  <button class="page-btn" class:active={finesPerPage === opt} onclick={() => { finesPerPage = opt; finesPage = 1; }}>{opt}</button>
+                {/each}
+              </div>
+              <div class="page-nav">
+                <button class="page-btn nav-btn" disabled={finesPage === 1} onclick={() => finesPage = Math.max(1, finesPage - 1)}>←</button>
+                {#each finesPageNumbers as p}
+                  {#if p === '...'}
+                    <span class="page-ellipsis">…</span>
+                  {:else}
+                    <button class="page-btn" class:active={finesPage === p} onclick={() => finesPage = p as number}>{p}</button>
+                  {/if}
+                {/each}
+                <button class="page-btn nav-btn" disabled={finesPage === finesTotalPages} onclick={() => finesPage = Math.min(finesTotalPages, finesPage + 1)}>→</button>
+              </div>
+            </div>
+          {/if}
         {:else}
           {@render barChart(finesChartData, '#f85149')}
         {/if}
@@ -575,6 +900,48 @@
 </PageLayout>
 
 <style>
+/* ── Tooltip ─────────────────────────────────────────────────────────────── */
+.chart-tooltip {
+  position: fixed;
+  background: var(--bg-overlay, var(--bg-layer));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 6px 10px;
+  font-size: 0.8125rem;
+  color: var(--text-primary);
+  pointer-events: none;
+  z-index: 1000;
+  white-space: nowrap;
+  box-shadow: var(--shadow-md, 0 4px 16px rgba(0,0,0,0.3));
+}
+
+/* ── Report filters ──────────────────────────────────────────────────────── */
+.report-filters {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+.filter-field { display: flex; flex-direction: column; gap: 0.375rem; }
+.filter-label { font-size: 0.8125rem; font-weight: 600; color: var(--text-secondary); }
+.field-select-sm {
+  padding: 0.4375rem 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-family: var(--font);
+  outline: none;
+  cursor: pointer;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.field-select-sm:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
 /* ── Tabs nav ────────────────────────────────────────────────────────────── */
 .tabs-nav {
   display: flex;
@@ -905,6 +1272,102 @@
 .badge-unpaid {
   background: var(--danger-light);
   color: var(--danger);
+}
+
+/* ── Sortable table headers ──────────────────────────────────────────────── */
+.sortable-th {
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--transition, 0.15s ease);
+}
+
+.sortable-th:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.th-sort-primary {
+  color: var(--accent-text, var(--accent));
+}
+
+.th-sort-secondary {
+  color: var(--text-secondary);
+}
+
+.th-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1em;
+  font-size: 0.85em;
+  margin-left: 0.3em;
+  opacity: 0.5;
+}
+
+.th-icon-primary {
+  color: var(--accent-text, var(--accent));
+  opacity: 1;
+}
+
+.th-icon-secondary {
+  color: var(--text-secondary);
+  opacity: 0.8;
+}
+
+/* ── Pagination ───────────────────────────────────────────────────────────── */
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.pagination-info {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.per-page-group,
+.page-nav {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.page-btn {
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+.page-btn:hover:not(:disabled):not(.active) {
+  background: var(--bg-layer);
+  color: var(--text-primary);
+}
+.page-btn.active {
+  background: var(--accent-light);
+  color: var(--accent-text);
+  border-color: rgba(0, 120, 212, 0.4);
+  font-weight: 600;
+}
+.page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.nav-btn { font-size: 1rem; }
+.page-ellipsis {
+  padding: 0 0.25rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 2rem;
 }
 
 /* ── States ──────────────────────────────────────────────────────────────── */

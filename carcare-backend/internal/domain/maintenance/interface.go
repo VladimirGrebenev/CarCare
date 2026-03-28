@@ -5,5 +5,5 @@ type Repository interface {
 	GetMaintenanceEvent(id string) (MaintenanceEvent, error)
 	UpdateMaintenanceEvent(event MaintenanceEvent) error
 	DeleteMaintenanceEvent(id string) error
-	ListMaintenanceEvents() ([]MaintenanceEvent, error)
+	ListMaintenanceEvents(userID string) ([]MaintenanceEvent, error)
 }

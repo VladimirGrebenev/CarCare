@@ -5,5 +5,5 @@ type Repository interface {
 	GetFine(id string) (Fine, error)
 	UpdateFine(fine Fine) error
 	DeleteFine(id string) error
-	ListFines() ([]Fine, error)
+	ListFines(userID string) ([]Fine, error)
 }

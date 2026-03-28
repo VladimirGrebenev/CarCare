@@ -5,5 +5,5 @@ type Repository interface {
 	GetFuelEvent(id string) (FuelEvent, error)
 	UpdateFuelEvent(event FuelEvent) error
 	DeleteFuelEvent(id string) error
-	ListFuelEvents() ([]FuelEvent, error)
+	ListFuelEvents(userID string) ([]FuelEvent, error)
 }

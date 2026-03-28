@@ -35,6 +35,64 @@
   let deleteId = $state<string | null>(null);
   let deleting = $state(false);
 
+  // Pagination state
+  let page = $state(1);
+  let perPage = $state(5);
+  const PER_PAGE_OPTIONS = [5, 10, 25];
+
+  // Sorting state for cars
+  type CarSortKey = 'name' | 'year';
+  let carSortKey = $state<CarSortKey>('name');
+  let carSortDir = $state<'asc' | 'desc'>('asc');
+
+  function toggleCarSort(key: CarSortKey) {
+    if (carSortKey === key) {
+      carSortDir = carSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      carSortKey = key;
+      carSortDir = key === 'year' ? 'desc' : 'asc';
+    }
+    page = 1;
+  }
+
+  let sortedCars = $derived(
+    [...cars].sort((a, b) => {
+      let cmp = 0;
+      if (carSortKey === 'name') {
+        cmp = `${a.brand} ${a.model}`.localeCompare(`${b.brand} ${b.model}`, 'ru');
+      } else {
+        cmp = (a.year ?? 0) - (b.year ?? 0);
+      }
+      return carSortDir === 'asc' ? cmp : -cmp;
+    })
+  );
+
+  let totalPages = $derived(Math.ceil(sortedCars.length / perPage));
+  let showPagination = $derived(sortedCars.length > 5);
+  let pagedCars = $derived(sortedCars.slice((page - 1) * perPage, page * perPage));
+
+  let pageNumbers = $derived((() => {
+    if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const nums: (number | '...')[] = [];
+    if (page <= 3) {
+      nums.push(1, 2, 3, 4, '...', totalPages);
+    } else if (page >= totalPages - 2) {
+      nums.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+    } else {
+      nums.push(1, '...', page - 1, page, page + 1, '...', totalPages);
+    }
+    return nums;
+  })());
+
+  function setPage(p: number) {
+    page = Math.max(1, Math.min(p, totalPages));
+  }
+
+  function setPerPage(value: number) {
+    perPage = value;
+    page = 1;
+  }
+
   const currentYear = new Date().getFullYear();
 
   async function loadCars() {
@@ -142,9 +200,27 @@
 </script>
 
 <PageLayout title="Мои автомобили">
-  <div class="page-toolbar">
-    <Button variant="primary" onclick={openAdd}>+ Добавить авто</Button>
-  </div>
+  {#snippet toolbar()}
+    <div class="sort-controls">
+      <span class="sort-label">Сортировка:</span>
+      <button
+        class="sort-btn"
+        class:active={carSortKey === 'name'}
+        onclick={() => toggleCarSort('name')}
+      >
+        Марка/Модель {carSortKey === 'name' ? (carSortDir === 'asc' ? '↑' : '↓') : '↕'}
+      </button>
+      <button
+        class="sort-btn"
+        class:active={carSortKey === 'year'}
+        onclick={() => toggleCarSort('year')}
+      >
+        Год {carSortKey === 'year' ? (carSortDir === 'asc' ? '↑' : '↓') : '↕'}
+      </button>
+    </div>
+    <div style="flex:1"></div>
+    <Button variant="primary" onclick={openAdd}>+ Добавить</Button>
+  {/snippet}
 
   {#if loading}
     <Loader size={40} />
@@ -154,7 +230,7 @@
     <EmptyState message="Нет добавленных авто" />
   {:else}
     <div class="cars-list">
-      {#each cars as car (car.id)}
+      {#each pagedCars as car (car.id)}
         <Card className="car-card">
           {#snippet children()}
           <div class="car-row">
@@ -184,6 +260,38 @@
         </Card>
       {/each}
     </div>
+
+    {#if showPagination}
+      <div class="pagination-bar">
+        <span class="pagination-info">
+          Показано {Math.min((page - 1) * perPage + 1, sortedCars.length)}–{Math.min(page * perPage, sortedCars.length)} из {sortedCars.length}
+        </span>
+        <div class="per-page-group">
+          {#each PER_PAGE_OPTIONS as opt}
+            <button
+              class="page-btn"
+              class:active={perPage === opt}
+              onclick={() => setPerPage(opt)}
+            >{opt}</button>
+          {/each}
+        </div>
+        <div class="page-nav">
+          <button class="page-btn nav-btn" disabled={page === 1} onclick={() => setPage(page - 1)}>←</button>
+          {#each pageNumbers as p}
+            {#if p === '...'}
+              <span class="page-ellipsis">…</span>
+            {:else}
+              <button
+                class="page-btn"
+                class:active={page === p}
+                onclick={() => setPage(p as number)}
+              >{p}</button>
+            {/if}
+          {/each}
+          <button class="page-btn nav-btn" disabled={page === totalPages} onclick={() => setPage(page + 1)}>→</button>
+        </div>
+      </div>
+    {/if}
   {/if}
 </PageLayout>
 
@@ -232,10 +340,42 @@
 </Modal>
 
 <style>
-.page-toolbar {
+.sort-controls {
   display: flex;
-  justify-content: flex-end;
-  margin-bottom: 1.25rem;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.sort-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.sort-btn {
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+  white-space: nowrap;
+}
+
+.sort-btn:hover {
+  background: var(--bg-layer);
+  color: var(--text-primary);
+}
+
+.sort-btn.active {
+  background: var(--accent-light);
+  color: var(--accent-text);
+  border-color: rgba(0, 120, 212, 0.4);
+  font-weight: 600;
 }
 
 .cars-list {
@@ -330,5 +470,60 @@
   background: var(--danger-light);
   border-radius: var(--radius-sm);
   border: 1px solid var(--danger);
+}
+
+/* Pagination */
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+.pagination-info {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.per-page-group,
+.page-nav {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+.page-btn {
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+.page-btn:hover:not(:disabled):not(.active) {
+  background: var(--bg-layer);
+  color: var(--text-primary);
+}
+.page-btn.active {
+  background: var(--accent-light);
+  color: var(--accent-text);
+  border-color: rgba(0, 120, 212, 0.4);
+  font-weight: 600;
+}
+.page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.nav-btn { font-size: 1rem; }
+.page-ellipsis {
+  padding: 0 0.25rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 2rem;
 }
 </style>

@@ -32,9 +32,10 @@ func TestMaintenanceRepository_ListMaintenanceEvents(t *testing.T) {
 	defer cleanup()
 	rows := sqlmock.NewRows([]string{"id", "car_id", "type", "date", "cost", "description"}).
 		AddRow("1", "1", "oil_change", "2026-03-22", 3000.0, "плановая замена масла")
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, car_id, type, date, cost, description FROM maintenance_events")).
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT me.id, me.car_id, me.type, me.date, me.cost, me.description FROM maintenance_events me JOIN cars c ON c.id = me.car_id WHERE c.user_id = $1")).
+		WithArgs("user-1").
 		WillReturnRows(rows)
-	events, err := repo.ListMaintenanceEvents()
+	events, err := repo.ListMaintenanceEvents("user-1")
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}

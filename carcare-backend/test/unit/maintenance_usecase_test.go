@@ -19,7 +19,7 @@ func (m *mockMaintenanceRepo) UpdateMaintenanceEvent(e maintenance.MaintenanceEv
 	return nil
 }
 func (m *mockMaintenanceRepo) DeleteMaintenanceEvent(id string) error { return nil }
-func (m *mockMaintenanceRepo) ListMaintenanceEvents() ([]maintenance.MaintenanceEvent, error) {
+func (m *mockMaintenanceRepo) ListMaintenanceEvents(userID string) ([]maintenance.MaintenanceEvent, error) {
 	return []maintenance.MaintenanceEvent{}, nil
 }
 

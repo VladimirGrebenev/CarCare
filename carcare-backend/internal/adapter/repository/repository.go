@@ -257,8 +257,8 @@ func (r *FuelRepository) DeleteFuelEvent(id string) error {
        return nil
 }
 
-func (r *FuelRepository) ListFuelEvents() ([]fuel.FuelEvent, error) {
-       rows, err := r.db.Query(`SELECT id, car_id, volume, price, type, date FROM fuel_events`)
+func (r *FuelRepository) ListFuelEvents(userID string) ([]fuel.FuelEvent, error) {
+       rows, err := r.db.Query(`SELECT fe.id, fe.car_id, fe.volume, fe.price, fe.type, fe.date FROM fuel_events fe JOIN cars c ON c.id = fe.car_id WHERE c.user_id = $1`, userID)
        if err != nil {
 	       return nil, err
        }
@@ -324,8 +324,8 @@ func (r *MaintenanceRepository) DeleteMaintenanceEvent(id string) error {
 	return nil
 }
 
-func (r *MaintenanceRepository) ListMaintenanceEvents() ([]maintenance.MaintenanceEvent, error) {
-	rows, err := r.db.Query(`SELECT id, car_id, type, date, cost, description FROM maintenance_events`)
+func (r *MaintenanceRepository) ListMaintenanceEvents(userID string) ([]maintenance.MaintenanceEvent, error) {
+	rows, err := r.db.Query(`SELECT me.id, me.car_id, me.type, me.date, me.cost, me.description FROM maintenance_events me JOIN cars c ON c.id = me.car_id WHERE c.user_id = $1`, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -391,8 +391,8 @@ func (r *FineRepository) DeleteFine(id string) error {
 	return nil
 }
 
-func (r *FineRepository) ListFines() ([]fine.Fine, error) {
-	rows, err := r.db.Query(`SELECT id, car_id, amount, type, date, status, description FROM fines`)
+func (r *FineRepository) ListFines(userID string) ([]fine.Fine, error) {
+	rows, err := r.db.Query(`SELECT f.id, f.car_id, f.amount, f.type, f.date, f.status, f.description FROM fines f JOIN cars c ON c.id = f.car_id WHERE c.user_id = $1`, userID)
 	if err != nil {
 		return nil, err
 	}

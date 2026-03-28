@@ -226,6 +226,6 @@ func (m *mockFuelRepoWithError) DeleteFuelEvent(id string) error {
 	return m.err
 }
 
-func (m *mockFuelRepoWithError) ListFuelEvents() ([]fuel.FuelEvent, error) {
+func (m *mockFuelRepoWithError) ListFuelEvents(userID string) ([]fuel.FuelEvent, error) {
 	return nil, m.err
 }
