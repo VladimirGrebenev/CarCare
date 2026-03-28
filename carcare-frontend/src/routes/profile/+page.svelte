@@ -220,7 +220,7 @@
             {#each cars as car (car.id)}
               <div class="car-card glassmorphism">
                 <div class="car-header">
-                  <div class="car-icon" aria-hidden="true">🚗</div>
+                  <div class="car-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l3-4h8l3 4h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="17.5" r="2.5"/></svg></div>
                   <div class="car-meta">
                     <div class="car-name">{car.brand} {car.model}</div>
                     <div class="car-year">{car.year} г.в.</div>
@@ -232,7 +232,11 @@
                     disabled={deletingCarId === car.id}
                     title="Удалить автомобиль"
                   >
-                    {deletingCarId === car.id ? '⏳' : '🗑️'}
+                    {#if deletingCarId === car.id}
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 0.7s linear infinite"><circle cx="12" cy="12" r="10" stroke-dasharray="31.416" stroke-dashoffset="10"/></svg>
+                    {:else}
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                    {/if}
                   </button>
                 </div>
                 <div class="car-details">
@@ -449,7 +453,7 @@
   align-items: center;
   gap: 0.75rem;
 }
-.car-icon { font-size: 1.5rem; flex-shrink: 0; }
+.car-icon { font-size: 1.5rem; flex-shrink: 0; display: flex; align-items: center; color: var(--accent-text); }
 .car-meta { flex: 1; min-width: 0; }
 .car-name { font-size: 1rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .car-year { font-size: 0.8125rem; color: var(--text-secondary); }
@@ -471,6 +475,10 @@
   color: var(--danger);
 }
 .car-delete-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 
 .car-details { display: flex; flex-direction: column; gap: 0.5rem; }
 .car-detail-row {
