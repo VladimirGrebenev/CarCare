@@ -5,14 +5,19 @@
   import NavBar from '../components/navigation/NavBar.svelte';
   import Sidebar from '../components/navigation/Sidebar.svelte';
   import { theme } from '../lib/theme';
+  import { initSpotlight } from '../lib/spotlight';
   import './+layout.css';
 
   let { children } = $props();
   let isMobile = $state(false);
+  let sidebarCollapsed = $state(false);
   let currentPath = $derived($page.url.pathname);
 
   onMount(() => {
     theme.init();
+    initSpotlight();
+    // Sync initial collapsed state from localStorage
+    sidebarCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
     const update = () => (isMobile = window.innerWidth < 768);
     update();
     window.addEventListener('resize', update);
@@ -22,6 +27,10 @@
   function navigate(path: string) {
     goto(path);
   }
+
+  function handleSidebarCollapse(collapsed: boolean) {
+    sidebarCollapsed = collapsed;
+  }
 </script>
 
 <div class="app-layout">
@@ -29,8 +38,15 @@
     <main class="mobile-content">{@render children()}</main>
     <NavBar active={currentPath} onNavigate={navigate} onToggleTheme={() => theme.toggle()} />
   {:else}
-    <Sidebar active={currentPath} onNavigate={navigate} onToggleTheme={() => theme.toggle()} />
-    <main class="desktop-content">{@render children()}</main>
+    <Sidebar
+      active={currentPath}
+      onNavigate={navigate}
+      onToggleTheme={() => theme.toggle()}
+      onCollapse={handleSidebarCollapse}
+    />
+    <main class="desktop-content" class:sidebar-collapsed={sidebarCollapsed}>
+      {@render children()}
+    </main>
   {/if}
 </div>
 
@@ -42,13 +58,20 @@
   background: var(--bg-base);
   transition: background var(--transition-slow);
 }
+
 .desktop-content {
   flex: 1;
   margin-left: var(--sidebar-width);
   min-height: 100vh;
   padding: 2rem;
   overflow-y: auto;
+  transition: margin-left 220ms cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+.desktop-content.sidebar-collapsed {
+  margin-left: var(--sidebar-width-collapsed);
+}
+
 .mobile-content {
   flex: 1;
   min-height: 100vh;
