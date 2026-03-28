@@ -53,8 +53,10 @@ export async function editFine(id: string, fine: Partial<Fine>) {
   finesError.set(null);
   try {
     const updated = await updateFine(id, fine);
-    finesList.update(list => list.map(f => f.id === id ? updated : f));
-    return updated;
+    // Merge: приоритет у ответа бэкенда, но сохраняем поля из fine на случай если бэкенд вернул неполные данные
+    const merged = { ...fine, ...updated };
+    finesList.update(list => list.map(f => f.id === id ? { ...f, ...merged } : f));
+    return merged;
   } catch (e: unknown) {
     finesError.set(e instanceof Error ? e.message : 'Ошибка обновления штрафа');
     throw e;

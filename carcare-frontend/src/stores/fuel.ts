@@ -10,6 +10,7 @@ export type Fuel = {
   liters: number | string;
   price: number | string;
   carId: string;
+  fuelType?: string;
 };
 
 export const fuelList = writable<Fuel[]>([]);
@@ -53,7 +54,9 @@ export async function createFuel(fuel: Fuel) {
     const newFuel = await addFuel(fuel);
     fuelList.update(list => [newFuel, ...list]);
   } catch (e: unknown) {
-    fuelError.set(e instanceof Error ? e.message : 'Ошибка добавления заправки');
+    const msg = e instanceof Error ? e.message : 'Ошибка добавления заправки';
+    fuelError.set(msg);
+    throw new Error(msg);
   } finally {
     fuelLoading.set(false);
   }

@@ -79,6 +79,30 @@ export async function addCar(car) {
   return res.json();
 }
 
+export async function updateCar(car) {
+  const res = await fetch(`/api/cars/${car.id}`, {
+    method: 'PUT',
+    headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
+    credentials: 'include',
+    body: JSON.stringify(car)
+  });
+  if (!res.ok) {
+    throw new Error(createErrorMessage(res.status, 'обновление авто'));
+  }
+  return res.json();
+}
+
+export async function deleteCar(id: string) {
+  const res = await fetch(`/api/cars/${id}`, {
+    method: 'DELETE',
+    credentials: 'include',
+    headers: withAuthHeaders()
+  });
+  if (!res.ok) {
+    throw new Error(createErrorMessage(res.status, 'удаление авто'));
+  }
+}
+
 // --- Cars ---
 export async function fetchCars() {
   const res = await fetch('/api/cars', {
@@ -132,31 +156,54 @@ export async function fetchFuelHistory(filters = {}) {
   if (!res.ok) return [];
   
   try {
-    return await res.json();
+    const data = await res.json();
+    return (Array.isArray(data) ? data : []).map(f => ({
+      id: f.id,
+      carId: f.car_id,
+      liters: f.volume,
+      price: f.price,
+      fuelType: f.type,
+      date: f.date,
+    }));
   } catch (_e) {
     return [];
   }
 }
 
 export async function addFuel(fuel) {
+  const body = {
+    car_id: fuel.carId,
+    volume: fuel.liters,
+    price: fuel.price,
+    type: fuel.fuelType,
+    date: fuel.date,
+  };
   const res = await fetch('/api/fuel', {
     method: 'POST',
     headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
     credentials: 'include',
-    body: JSON.stringify(fuel)
+    body: JSON.stringify(body)
   });
   if (!res.ok) {
     throw new Error(createErrorMessage(res.status, 'добавление заправки'));
   }
-  return res.json();
+  const f = await res.json();
+  return { id: f.id, carId: f.car_id, liters: f.volume, price: f.price, fuelType: f.type, date: f.date };
 }
 
 export async function updateFuel(id, fuel) {
+  const body = {
+    car_id: fuel.carId,
+    volume: fuel.liters,
+    price: fuel.price,
+    type: fuel.fuelType,
+    date: fuel.date,
+  };
   const res = await fetch(`/api/fuel/${id}`, {
     method: 'PUT',
     headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
     credentials: 'include',
-    body: JSON.stringify(fuel)
+    body: JSON.stringify(body)
   });
   if (!res.ok) {
     throw new Error(createErrorMessage(res.status, 'обновление заправки'));
@@ -197,31 +244,51 @@ export async function fetchMaintenanceHistory(filters = {}) {
   if (!res.ok) return [];
   
   try {
-    return await res.json();
+    const data = await res.json();
+    return (Array.isArray(data) ? data : []).map(m => ({
+      id: m.id,
+      carId: m.car_id,
+      type: m.type,
+      date: m.date,
+      cost: m.cost,
+    }));
   } catch (_e) {
     return [];
   }
 }
 
 export async function addMaintenance(maintenance) {
+  const body = {
+    car_id: maintenance.carId,
+    type: maintenance.type,
+    date: maintenance.date,
+    cost: maintenance.cost,
+  };
   const res = await fetch('/api/maintenance', {
     method: 'POST',
     headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
     credentials: 'include',
-    body: JSON.stringify(maintenance)
+    body: JSON.stringify(body)
   });
   if (!res.ok) {
     throw new Error(createErrorMessage(res.status, 'добавление ТО'));
   }
-  return res.json();
+  const m = await res.json();
+  return { id: m.id, carId: m.car_id, type: m.type, date: m.date, cost: m.cost };
 }
 
 export async function updateMaintenance(id, maintenance) {
+  const body = {
+    car_id: maintenance.carId,
+    type: maintenance.type,
+    date: maintenance.date,
+    cost: maintenance.cost,
+  };
   const res = await fetch(`/api/maintenance/${id}`, {
     method: 'PUT',
     headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
     credentials: 'include',
-    body: JSON.stringify(maintenance)
+    body: JSON.stringify(body)
   });
   if (!res.ok) {
     throw new Error(createErrorMessage(res.status, 'обновление ТО'));
@@ -262,36 +329,71 @@ export async function fetchFines(filters = {}) {
   if (!res.ok) return [];
   
   try {
-    return await res.json();
+    const data = await res.json();
+    return (Array.isArray(data) ? data : []).map(f => ({
+      id: f.id,
+      carId: f.car_id,
+      amount: f.amount,
+      type: f.type,
+      date: f.date,
+      status: f.status,
+      description: f.description,
+    }));
   } catch (_e) {
     return [];
   }
 }
 
 export async function addFine(fine) {
+  const body = {
+    car_id: fine.carId,
+    amount: fine.amount,
+    type: fine.type,
+    date: fine.date,
+    status: fine.status ?? 'unpaid',
+    description: fine.description ?? '',
+  };
   const res = await fetch('/api/fines', {
     method: 'POST',
     headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
     credentials: 'include',
-    body: JSON.stringify(fine)
+    body: JSON.stringify(body)
   });
   if (!res.ok) {
     throw new Error(createErrorMessage(res.status, 'добавление штрафа'));
   }
-  return res.json();
+  const f = await res.json();
+  return { id: f.id, carId: f.car_id, amount: f.amount, type: f.type, date: f.date, status: f.status, description: f.description };
 }
 
 export async function updateFine(id, fine) {
+  const body = {
+    car_id: fine.carId,
+    amount: fine.amount,
+    type: fine.type,
+    date: fine.date,
+    status: fine.status ?? 'unpaid',
+    description: fine.description ?? '',
+  };
   const res = await fetch(`/api/fines/${id}`, {
     method: 'PUT',
     headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
     credentials: 'include',
-    body: JSON.stringify(fine)
+    body: JSON.stringify(body)
   });
   if (!res.ok) {
     throw new Error(createErrorMessage(res.status, 'обновление штрафа'));
   }
-  return res.json();
+  const f = await res.json();
+  return {
+    id: f.id,
+    carId: f.car_id,
+    amount: f.amount,
+    type: f.type,
+    date: f.date,
+    status: f.status,
+    description: f.description,
+  };
 }
 
 export async function deleteFine(id) {
