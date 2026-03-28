@@ -82,10 +82,9 @@
     if (!carForm.brand.trim()) return 'Укажите марку автомобиля';
     if (!carForm.model.trim()) return 'Укажите модель автомобиля';
     const year = Number(carForm.year);
-    if (!year || year < 1990 || year > CURRENT_YEAR + 1) {
-      return `Год должен быть от 1990 до ${CURRENT_YEAR + 1}`;
+    if (!year || year < 1886 || year > CURRENT_YEAR) {
+      return `Год должен быть от 1886 до ${CURRENT_YEAR}`;
     }
-    if (!carForm.plate.trim()) return 'Укажите государственный номер';
     if (!carForm.vin.trim()) return 'VIN является обязательным полем';
     if (carForm.vin.trim().length !== 17) return 'VIN должен содержать ровно 17 символов';
     return '';
@@ -256,6 +255,7 @@
       onClose={() => { showAddCar = false; carFormError = ''; }}
       width="500px"
     >
+      {#snippet children()}
       <div class="car-form">
         <Input
           label="Марка *"
@@ -275,31 +275,22 @@
             id="car-year"
             class="field-input"
             type="number"
-            min="1990"
-            max={CURRENT_YEAR + 1}
+            min="1886"
+            max={CURRENT_YEAR}
             placeholder={String(CURRENT_YEAR)}
             bind:value={carForm.year}
           />
         </div>
         <Input
-          label="Гос. номер *"
+          label="Гос. номер"
           placeholder="А123БВ77"
-          value={carForm.plate}
-          oninput={(e) => carForm.plate = (e.target as HTMLInputElement).value.toUpperCase()}
-          required
+          bind:value={carForm.plate}
         />
         <div class="col-span-2">
           <Input
             label="VIN * (17 символов)"
             placeholder="WVWZZZ1JZ3W386752"
-            value={carForm.vin}
-            oninput={(e) => {
-              carForm.vin = (e.target as HTMLInputElement).value.toUpperCase();
-            }}
-            hint={carForm.vin ? `${carForm.vin.length}/17 символов` : ''}
-            error={carForm.vin && carForm.vin.length > 0 && carForm.vin.length !== 17
-              ? `Введено ${carForm.vin.length} из 17 символов`
-              : ''}
+            bind:value={carForm.vin}
             required
           />
         </div>
@@ -307,6 +298,7 @@
           <p class="form-error col-span-2" role="alert">{carFormError}</p>
         {/if}
       </div>
+      {/snippet}
       {#snippet footer()}
         <Button variant="secondary" onclick={() => { showAddCar = false; carFormError = ''; }}>
           Отмена
