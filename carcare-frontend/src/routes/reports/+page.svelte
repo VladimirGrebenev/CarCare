@@ -170,13 +170,16 @@
     return value.toLocaleString('ru-RU') + ' ₽';
   }
 
-  function fmtDate(dateStr: string): string {
-    if (!dateStr) return '—';
-    try {
-      return new Date(dateStr).toLocaleDateString('ru-RU');
-    } catch {
-      return dateStr;
-    }
+  function fmtDate(raw: string | null | undefined): string {
+    if (!raw) return '—';
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) return String(raw);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${day}.${month}.${year} ${hours}:${minutes}`;
   }
 
   // ── Car helpers ───────────────────────────────────────────────────────────────
@@ -276,7 +279,7 @@
     ] as const) as tab}
       <button
         role="tab"
-        class="tab-btn"
+        class="tab-btn spotlight"
         class:active={activeTab === tab.id}
         aria-selected={activeTab === tab.id}
         onclick={() => activeTab = tab.id as Tab}
@@ -383,14 +386,14 @@
         </div>
         <div class="view-controls">
           <div class="view-toggle">
-            <button class="toggle-btn" class:active={fuelView === 'table'} onclick={() => fuelView = 'table'}>Таблица</button>
-            <button class="toggle-btn" class:active={fuelView === 'chart'} onclick={() => fuelView = 'chart'}>График</button>
+            <button class="toggle-btn spotlight" class:active={fuelView === 'table'} onclick={() => fuelView = 'table'}>Таблица</button>
+            <button class="toggle-btn spotlight" class:active={fuelView === 'chart'} onclick={() => fuelView = 'chart'}>График</button>
           </div>
           {#if fuelView === 'chart'}
             <div class="period-controls">
-              <button class="toggle-btn" class:active={fuelPeriod === 'week'} onclick={() => fuelPeriod = 'week'}>Неделя</button>
-              <button class="toggle-btn" class:active={fuelPeriod === 'month'} onclick={() => fuelPeriod = 'month'}>Месяц</button>
-              <button class="toggle-btn" class:active={fuelPeriod === 'custom'} onclick={() => fuelPeriod = 'custom'}>Период</button>
+              <button class="toggle-btn spotlight" class:active={fuelPeriod === 'week'} onclick={() => fuelPeriod = 'week'}>Неделя</button>
+              <button class="toggle-btn spotlight" class:active={fuelPeriod === 'month'} onclick={() => fuelPeriod = 'month'}>Месяц</button>
+              <button class="toggle-btn spotlight" class:active={fuelPeriod === 'custom'} onclick={() => fuelPeriod = 'custom'}>Период</button>
               {#if fuelPeriod === 'custom'}
                 <input type="date" class="field-input-sm" bind:value={fuelDateFrom} />
                 <span>—</span>
@@ -447,14 +450,14 @@
         </div>
         <div class="view-controls">
           <div class="view-toggle">
-            <button class="toggle-btn" class:active={maintenanceView === 'table'} onclick={() => maintenanceView = 'table'}>Таблица</button>
-            <button class="toggle-btn" class:active={maintenanceView === 'chart'} onclick={() => maintenanceView = 'chart'}>График</button>
+            <button class="toggle-btn spotlight" class:active={maintenanceView === 'table'} onclick={() => maintenanceView = 'table'}>Таблица</button>
+            <button class="toggle-btn spotlight" class:active={maintenanceView === 'chart'} onclick={() => maintenanceView = 'chart'}>График</button>
           </div>
           {#if maintenanceView === 'chart'}
             <div class="period-controls">
-              <button class="toggle-btn" class:active={maintenancePeriod === 'week'} onclick={() => maintenancePeriod = 'week'}>Неделя</button>
-              <button class="toggle-btn" class:active={maintenancePeriod === 'month'} onclick={() => maintenancePeriod = 'month'}>Месяц</button>
-              <button class="toggle-btn" class:active={maintenancePeriod === 'custom'} onclick={() => maintenancePeriod = 'custom'}>Период</button>
+              <button class="toggle-btn spotlight" class:active={maintenancePeriod === 'week'} onclick={() => maintenancePeriod = 'week'}>Неделя</button>
+              <button class="toggle-btn spotlight" class:active={maintenancePeriod === 'month'} onclick={() => maintenancePeriod = 'month'}>Месяц</button>
+              <button class="toggle-btn spotlight" class:active={maintenancePeriod === 'custom'} onclick={() => maintenancePeriod = 'custom'}>Период</button>
               {#if maintenancePeriod === 'custom'}
                 <input type="date" class="field-input-sm" bind:value={maintenanceDateFrom} />
                 <span>—</span>
@@ -509,14 +512,14 @@
         </div>
         <div class="view-controls">
           <div class="view-toggle">
-            <button class="toggle-btn" class:active={finesView === 'table'} onclick={() => finesView = 'table'}>Таблица</button>
-            <button class="toggle-btn" class:active={finesView === 'chart'} onclick={() => finesView = 'chart'}>График</button>
+            <button class="toggle-btn spotlight" class:active={finesView === 'table'} onclick={() => finesView = 'table'}>Таблица</button>
+            <button class="toggle-btn spotlight" class:active={finesView === 'chart'} onclick={() => finesView = 'chart'}>График</button>
           </div>
           {#if finesView === 'chart'}
             <div class="period-controls">
-              <button class="toggle-btn" class:active={finesPeriod === 'week'} onclick={() => finesPeriod = 'week'}>Неделя</button>
-              <button class="toggle-btn" class:active={finesPeriod === 'month'} onclick={() => finesPeriod = 'month'}>Месяц</button>
-              <button class="toggle-btn" class:active={finesPeriod === 'custom'} onclick={() => finesPeriod = 'custom'}>Период</button>
+              <button class="toggle-btn spotlight" class:active={finesPeriod === 'week'} onclick={() => finesPeriod = 'week'}>Неделя</button>
+              <button class="toggle-btn spotlight" class:active={finesPeriod === 'month'} onclick={() => finesPeriod = 'month'}>Месяц</button>
+              <button class="toggle-btn spotlight" class:active={finesPeriod === 'custom'} onclick={() => finesPeriod = 'custom'}>Период</button>
               {#if finesPeriod === 'custom'}
                 <input type="date" class="field-input-sm" bind:value={finesDateFrom} />
                 <span>—</span>
@@ -599,13 +602,14 @@
 }
 
 .tab-btn:hover:not(.active) {
-  background: var(--bg-input);
+  background: rgba(255, 255, 255, 0.06);
   color: var(--text-primary);
 }
 
 .tab-btn.active {
-  background: var(--accent);
-  color: #fff;
+  background: rgba(0, 120, 212, 0.15);
+  border: 1px solid rgba(0, 120, 212, 0.4);
+  color: var(--accent);
   font-weight: 600;
 }
 
@@ -775,8 +779,9 @@
   transition: background var(--transition), color var(--transition);
 }
 .toggle-btn.active {
-  background: var(--accent);
-  color: #fff;
+  background: rgba(0, 120, 212, 0.15);
+  border: 1px solid rgba(0, 120, 212, 0.4);
+  color: var(--accent);
   font-weight: 600;
 }
 .field-input-sm {
