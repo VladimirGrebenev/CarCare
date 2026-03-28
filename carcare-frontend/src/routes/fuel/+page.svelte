@@ -92,14 +92,65 @@
         _fuelType: getFuelTypeLabel(String(record.fuelType ?? '')),
         _priceFormatted: Number(record.price).toLocaleString('ru-RU', { minimumFractionDigits: 2 }),
         _total: (Number(record.liters) * Number(record.price)).toLocaleString('ru-RU', { minimumFractionDigits: 2 }) + ' ₽',
+        // numeric shadows for sorting
+        _totalNum: Number(record.liters) * Number(record.price),
+        _dateRaw: record.date as string ?? '',
       };
     })
   );
 
+  // Sorting state
+  let sortState = $state<Array<{ key: string; dir: 'asc' | 'desc' }>>([
+    { key: '_dateRaw', dir: 'desc' }
+  ]);
+
+  function handleSort(key: string, event: MouseEvent) {
+    const isShift = event.shiftKey;
+    const existing = sortState.findIndex(s => s.key === key);
+    if (isShift) {
+      if (existing === -1) {
+        sortState = [...sortState.slice(0, 1), { key, dir: 'desc' }];
+      } else if (sortState[existing].dir === 'desc') {
+        sortState = sortState.map((s, i) => i === existing ? { ...s, dir: 'asc' as const } : s);
+      } else {
+        sortState = sortState.filter((_, i) => i !== existing);
+      }
+    } else {
+      if (existing === -1 || existing === 1) {
+        sortState = [{ key, dir: 'desc' }];
+      } else if (sortState[0].dir === 'desc') {
+        sortState = [{ key, dir: 'asc' }, ...sortState.slice(1)];
+      } else {
+        sortState = sortState.slice(1);
+      }
+    }
+    page = 1;
+  }
+
+  function applySorting(arr: typeof rows): typeof rows {
+    if (sortState.length === 0) return arr;
+    return [...arr].sort((a, b) => {
+      for (const { key, dir } of sortState) {
+        const av = a[key as keyof typeof a] ?? '';
+        const bv = b[key as keyof typeof b] ?? '';
+        const an = Number(av), bn = Number(bv);
+        let cmp = 0;
+        if (!isNaN(an) && !isNaN(bn) && String(av) !== '' && String(bv) !== '') {
+          cmp = an - bn;
+        } else {
+          cmp = String(av).localeCompare(String(bv), 'ru');
+        }
+        if (cmp !== 0) return dir === 'asc' ? cmp : -cmp;
+      }
+      return 0;
+    });
+  }
+
   // Pagination derived values
-  let totalPages = $derived(Math.ceil(rows.length / perPage));
-  let showPagination = $derived(rows.length > 10);
-  let pagedRows = $derived(rows.slice((page - 1) * perPage, page * perPage));
+  let sortedRows = $derived(applySorting(rows));
+  let totalPages = $derived(Math.ceil(sortedRows.length / perPage));
+  let showPagination = $derived(sortedRows.length > 10);
+  let pagedRows = $derived(sortedRows.slice((page - 1) * perPage, page * perPage));
 
   let pageNumbers = $derived((() => {
     if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -113,6 +164,17 @@
     }
     return nums;
   })());
+
+  // Visible sort state for Table: map _dateRaw -> _date for display
+  let tableSortState = $derived(
+    sortState.map(s => ({ ...s, key: s.key === '_dateRaw' ? '_date' : s.key }))
+  );
+
+  function handleTableSort(key: string, event: MouseEvent) {
+    // Map display key back to internal key
+    const internalKey = key === '_date' ? '_dateRaw' : key;
+    handleSort(internalKey, event);
+  }
 
   function setPage(p: number) {
     page = Math.max(1, Math.min(p, totalPages));
@@ -208,6 +270,8 @@
     page = 1;
   });
 
+  const SORT_KEYS = ['_date', '_car', '_fuelType', 'liters', '_priceFormatted', '_total'];
+
   onMount(async () => {
     await ensureAuthenticated();
     await loadCars();
@@ -243,6 +307,9 @@
     error={$fuelError ?? ''}
     emptyText="Нет записей о заправках"
     onRowClick={openEdit}
+    sortKeys={SORT_KEYS}
+    sort={tableSortState}
+    onSort={handleTableSort}
   >
     {#snippet actions(row)}
       <div class="row-actions">
@@ -259,7 +326,7 @@
   {#if showPagination}
     <div class="pagination-bar">
       <span class="pagination-info">
-        Показано {Math.min((page - 1) * perPage + 1, rows.length)}–{Math.min(page * perPage, rows.length)} из {rows.length}
+        Показано {Math.min((page - 1) * perPage + 1, sortedRows.length)}–{Math.min(page * perPage, sortedRows.length)} из {sortedRows.length}
       </span>
       <div class="per-page-group">
         {#each PER_PAGE_OPTIONS as opt}
