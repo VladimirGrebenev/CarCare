@@ -12,16 +12,12 @@
   } = $props();
 </script>
 <main class="page-layout">
-  {#if title || toolbar}
-    <div class="page-header">
-      {#if title}
-        <h1 class="page-title">{title}</h1>
-      {/if}
-      {#if toolbar}
-        <div class="page-toolbar-inline">
-          {@render toolbar()}
-        </div>
-      {/if}
+  {#if title}
+    <h1 class="page-title">{title}</h1>
+  {/if}
+  {#if toolbar}
+    <div class="page-toolbar">
+      {@render toolbar()}
     </div>
   {/if}
   <section class="page-content">
@@ -33,31 +29,22 @@
 <style>
 .page-layout {
   min-height: 100vh;
-  padding: 2rem 1rem 5rem 1rem;
-  max-width: 800px;
+  padding: 1.25rem 1rem 5rem 1rem;
+  max-width: 860px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-}
-.page-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 0.25rem;
-  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 .page-title {
-  font-size: 1.5rem;
+  font-size: 1.625rem;
   font-weight: 700;
-  color: var(--accent);
-  white-space: nowrap;
+  color: var(--accent-text);
   margin: 0;
 }
-.page-toolbar-inline {
-  flex: 1;
+.page-toolbar {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 0.75rem;
   flex-wrap: wrap;
 }
@@ -66,9 +53,5 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-}
-:global(.dark) .page-layout {
-  --accent: #7de2fc;
-  color: #fff;
 }
 </style>

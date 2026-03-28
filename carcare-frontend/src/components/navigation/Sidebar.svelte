@@ -42,7 +42,7 @@
     {
       path: '/fuel',
       label: 'Топливо',
-      icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22V8l9-6 9 6v14"/><path d="M10 22V12h4v10"/></svg>`
+      icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h12v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3z"/><path d="M15 7h2a2 2 0 0 1 2 2v7a1 1 0 0 0 2 0V9"/><line x1="3" y1="7" x2="15" y2="7"/><line x1="8" y1="3" x2="8" y2="7"/></svg>`
     },
     {
       path: '/maintenance',

@@ -423,14 +423,12 @@
 
 <style>
 /* Таблица заправок — компактные столбцы */
-:global(.fuel-table table) { table-layout: fixed; }
-:global(.fuel-table th:nth-child(1)) { width: 110px; } /* дата */
-:global(.fuel-table th:nth-child(2)) { width: auto; }   /* авто */
-:global(.fuel-table th:nth-child(3)) { width: 80px; }   /* тип */
-:global(.fuel-table th:nth-child(4)) { width: 70px; }   /* объём */
-:global(.fuel-table th:nth-child(5)) { width: 75px; }   /* цена */
-:global(.fuel-table th:nth-child(6)) { width: 90px; }   /* сумма */
-:global(.fuel-table th:nth-child(7)) { width: 80px; }   /* действия */
+:global(.fuel-table th:nth-child(1)) { min-width: 100px; } /* дата */
+:global(.fuel-table th:nth-child(3)) { min-width: 70px; }  /* тип */
+:global(.fuel-table th:nth-child(4)) { min-width: 60px; }  /* объём */
+:global(.fuel-table th:nth-child(5)) { min-width: 65px; }  /* цена */
+:global(.fuel-table th:nth-child(6)) { min-width: 80px; }  /* сумма */
+:global(.fuel-table th:nth-child(7)) { min-width: 70px; }  /* действия */
 
 .filters { display: flex; gap: 0.75rem; flex: 1; flex-wrap: wrap; }
 
