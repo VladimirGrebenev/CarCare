@@ -18,7 +18,7 @@
   }: Props = $props();
 </script>
 
-<div class="card {className} {classAttr}">
+<div class="card spotlight {className} {classAttr}">
   {#if header}
     <div class="card-header">{@render header()}</div>
   {/if}
@@ -40,6 +40,8 @@
   gap: 1rem;
   transition: background var(--transition-slow), border-color var(--transition-slow);
 }
+.card-content, .card-header, .card-footer { position: relative; z-index: 1; }
+
 .card-header {
   font-size: 1rem;
   font-weight: 600;

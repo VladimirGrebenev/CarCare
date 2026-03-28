@@ -86,9 +86,9 @@ table {
 
 thead { background: var(--bg-input); }
 th {
-  padding: 0.75rem 1rem;
+  padding: 0.625rem 0.75rem;
   text-align: left;
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -97,16 +97,18 @@ th {
 }
 
 td {
-  padding: 0.75rem 1rem;
+  padding: 0.625rem 0.75rem;
   border-top: 1px solid var(--border);
   color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 tr.clickable { cursor: pointer; }
 tr.clickable:hover td { background: var(--accent-light); }
 tr:focus-visible td { background: var(--accent-light); }
 
-.col-actions { width: 1%; white-space: nowrap; }
+.col-actions { width: 1%; white-space: nowrap; padding: 0.375rem 0.5rem; }
 
 .table-state {
   padding: 3rem 1rem;
