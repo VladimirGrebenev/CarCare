@@ -262,10 +262,14 @@
 <PageLayout title="Штрафы">
   {#snippet toolbar()}
     <div class="filters">
-      <Input
-        placeholder="Поиск по описанию или авто..."
-        bind:value={filterSearch}
-      />
+      <div class="filter-field">
+        <label class="filter-label" for="fines-search">Поиск</label>
+        <Input
+          id="fines-search"
+          placeholder="Поиск по описанию или авто..."
+          bind:value={filterSearch}
+        />
+      </div>
       <div class="filter-field">
         <label class="filter-label" for="fines-filter-car">Автомобиль</label>
         <select

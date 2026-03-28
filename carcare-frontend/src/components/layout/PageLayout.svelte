@@ -39,7 +39,7 @@
 .page-title {
   font-size: 1.625rem;
   font-weight: 700;
-  color: var(--accent-text);
+  color: #4da6d9;
   margin: 0;
 }
 .page-toolbar {

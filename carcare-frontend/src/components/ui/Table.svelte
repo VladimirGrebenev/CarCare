@@ -163,7 +163,8 @@ th.sort-primary {
 }
 
 th.sort-secondary {
-  color: var(--text-secondary);
+  color: var(--accent-text);
+  opacity: 0.7;
 }
 
 .th-content {
@@ -187,8 +188,8 @@ th.sort-secondary {
 }
 
 .sort-icon-secondary {
-  color: var(--text-secondary);
-  opacity: 0.8;
+  color: var(--accent-text);
+  opacity: 0.7;
 }
 
 .sort-rank {

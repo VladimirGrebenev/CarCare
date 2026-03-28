@@ -218,7 +218,8 @@
         Год {carSortKey === 'year' ? (carSortDir === 'asc' ? '↑' : '↓') : '↕'}
       </button>
     </div>
-    <Button variant="primary" onclick={openAdd}>+ Добавить авто</Button>
+    <div style="flex:1"></div>
+    <Button variant="primary" onclick={openAdd}>+ Добавить</Button>
   {/snippet}
 
   {#if loading}
