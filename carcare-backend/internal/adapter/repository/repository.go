@@ -26,8 +26,8 @@ func NewCarRepository(db *sql.DB) *CarRepository {
 }
 
 func (r *CarRepository) AddCar(c car.Car) error {
-	_, err := r.db.Exec(`INSERT INTO cars (id, brand, model, year, vin, plate) VALUES ($1, $2, $3, $4, $5, $6)`,
-		c.ID, c.Brand, c.Model, c.Year, c.VIN, c.Plate)
+	_, err := r.db.Exec(`INSERT INTO cars (id, user_id, brand, model, year, vin, plate) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		c.ID, c.UserID, c.Brand, c.Model, c.Year, c.VIN, c.Plate)
 	if err != nil {
 		if isUniqueViolation(err) {
 			return fmt.Errorf("car with VIN already exists: %w", err)
@@ -39,8 +39,8 @@ func (r *CarRepository) AddCar(c car.Car) error {
 
 func (r *CarRepository) GetCar(id string) (car.Car, error) {
 	var c car.Car
-	err := r.db.QueryRow(`SELECT id, brand, model, year, vin, plate FROM cars WHERE id = $1`, id).
-		Scan(&c.ID, &c.Brand, &c.Model, &c.Year, &c.VIN, &c.Plate)
+	err := r.db.QueryRow(`SELECT id, user_id, brand, model, year, vin, plate FROM cars WHERE id = $1`, id).
+		Scan(&c.ID, &c.UserID, &c.Brand, &c.Model, &c.Year, &c.VIN, &c.Plate)
 	if err == sql.ErrNoRows {
 		return car.Car{}, fmt.Errorf("car not found")
 	}
@@ -50,9 +50,9 @@ func (r *CarRepository) GetCar(id string) (car.Car, error) {
 	return c, nil
 }
 
-func (r *CarRepository) UpdateCar(c car.Car) error {
-	res, err := r.db.Exec(`UPDATE cars SET brand=$1, model=$2, year=$3, vin=$4, plate=$5 WHERE id=$6`,
-		c.Brand, c.Model, c.Year, c.VIN, c.Plate, c.ID)
+func (r *CarRepository) UpdateCar(c car.Car, userID string) error {
+	res, err := r.db.Exec(`UPDATE cars SET brand=$1, model=$2, year=$3, vin=$4, plate=$5 WHERE id=$6 AND user_id=$7`,
+		c.Brand, c.Model, c.Year, c.VIN, c.Plate, c.ID, userID)
 	if err != nil {
 		return err
 	}
@@ -63,8 +63,8 @@ func (r *CarRepository) UpdateCar(c car.Car) error {
 	return nil
 }
 
-func (r *CarRepository) DeleteCar(id string) error {
-	res, err := r.db.Exec(`DELETE FROM cars WHERE id=$1`, id)
+func (r *CarRepository) DeleteCar(id string, userID string) error {
+	res, err := r.db.Exec(`DELETE FROM cars WHERE id=$1 AND user_id=$2`, id, userID)
 	if err != nil {
 		return err
 	}
@@ -75,8 +75,8 @@ func (r *CarRepository) DeleteCar(id string) error {
 	return nil
 }
 
-func (r *CarRepository) ListCars() ([]car.Car, error) {
-	rows, err := r.db.Query(`SELECT id, brand, model, year, vin, plate FROM cars`)
+func (r *CarRepository) ListCars(userID string) ([]car.Car, error) {
+	rows, err := r.db.Query(`SELECT id, user_id, brand, model, year, vin, plate FROM cars WHERE user_id = $1`, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func (r *CarRepository) ListCars() ([]car.Car, error) {
 	cars := make([]car.Car, 0)
 	for rows.Next() {
 		var c car.Car
-		if err := rows.Scan(&c.ID, &c.Brand, &c.Model, &c.Year, &c.VIN, &c.Plate); err != nil {
+		if err := rows.Scan(&c.ID, &c.UserID, &c.Brand, &c.Model, &c.Year, &c.VIN, &c.Plate); err != nil {
 			return nil, err
 		}
 		cars = append(cars, c)
@@ -284,15 +284,15 @@ func NewMaintenanceRepository(db *sql.DB) *MaintenanceRepository {
 }
 
 func (r *MaintenanceRepository) AddMaintenanceEvent(event maintenance.MaintenanceEvent) error {
-	_, err := r.db.Exec(`INSERT INTO maintenance_events (id, car_id, type, date, cost) VALUES ($1, $2, $3, $4, $5)`,
-		event.ID, event.CarID, event.Type, event.Date, event.Cost)
+	_, err := r.db.Exec(`INSERT INTO maintenance_events (id, car_id, type, date, cost, description) VALUES ($1, $2, $3, $4, $5, $6)`,
+		event.ID, event.CarID, event.Type, event.Date, event.Cost, event.Description)
 	return err
 }
 
 func (r *MaintenanceRepository) GetMaintenanceEvent(id string) (maintenance.MaintenanceEvent, error) {
 	var e maintenance.MaintenanceEvent
-	err := r.db.QueryRow(`SELECT id, car_id, type, date, cost FROM maintenance_events WHERE id = $1`, id).
-		Scan(&e.ID, &e.CarID, &e.Type, &e.Date, &e.Cost)
+	err := r.db.QueryRow(`SELECT id, car_id, type, date, cost, description FROM maintenance_events WHERE id = $1`, id).
+		Scan(&e.ID, &e.CarID, &e.Type, &e.Date, &e.Cost, &e.Description)
 	if err == sql.ErrNoRows {
 		return maintenance.MaintenanceEvent{}, errors.New("maintenance event not found")
 	}
@@ -300,8 +300,8 @@ func (r *MaintenanceRepository) GetMaintenanceEvent(id string) (maintenance.Main
 }
 
 func (r *MaintenanceRepository) UpdateMaintenanceEvent(event maintenance.MaintenanceEvent) error {
-	res, err := r.db.Exec(`UPDATE maintenance_events SET car_id=$1, type=$2, date=$3, cost=$4 WHERE id=$5`,
-		event.CarID, event.Type, event.Date, event.Cost, event.ID)
+	res, err := r.db.Exec(`UPDATE maintenance_events SET car_id=$1, type=$2, date=$3, cost=$4, description=$5 WHERE id=$6`,
+		event.CarID, event.Type, event.Date, event.Cost, event.Description, event.ID)
 	if err != nil {
 		return err
 	}
@@ -325,7 +325,7 @@ func (r *MaintenanceRepository) DeleteMaintenanceEvent(id string) error {
 }
 
 func (r *MaintenanceRepository) ListMaintenanceEvents() ([]maintenance.MaintenanceEvent, error) {
-	rows, err := r.db.Query(`SELECT id, car_id, type, date, cost FROM maintenance_events`)
+	rows, err := r.db.Query(`SELECT id, car_id, type, date, cost, description FROM maintenance_events`)
 	if err != nil {
 		return nil, err
 	}
@@ -333,7 +333,7 @@ func (r *MaintenanceRepository) ListMaintenanceEvents() ([]maintenance.Maintenan
 	events := make([]maintenance.MaintenanceEvent, 0)
 	for rows.Next() {
 		var e maintenance.MaintenanceEvent
-		if err := rows.Scan(&e.ID, &e.CarID, &e.Type, &e.Date, &e.Cost); err != nil {
+		if err := rows.Scan(&e.ID, &e.CarID, &e.Type, &e.Date, &e.Cost, &e.Description); err != nil {
 			return nil, err
 		}
 		events = append(events, e)
