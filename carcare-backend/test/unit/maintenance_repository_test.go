@@ -18,10 +18,10 @@ func newMaintenanceRepoWithMock() (*repository.MaintenanceRepository, sqlmock.Sq
 func TestMaintenanceRepository_AddMaintenanceEvent(t *testing.T) {
 	repo, mock, cleanup := newMaintenanceRepoWithMock()
 	defer cleanup()
-	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO maintenance_events (id, car_id, type, date, cost) VALUES ($1, $2, $3, $4, $5)")).
-		WithArgs("1", "1", "oil_change", "2026-03-22", 3000.0).
+	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO maintenance_events (id, car_id, type, date, cost, description) VALUES ($1, $2, $3, $4, $5, $6)")).
+		WithArgs("1", "1", "oil_change", "2026-03-22", 3000.0, "плановая замена масла").
 		WillReturnResult(sqlmock.NewResult(1, 1))
-	err := repo.AddMaintenanceEvent(maintenance.MaintenanceEvent{ID: "1", CarID: "1", Type: "oil_change", Date: "2026-03-22", Cost: 3000})
+	err := repo.AddMaintenanceEvent(maintenance.MaintenanceEvent{ID: "1", CarID: "1", Type: "oil_change", Date: "2026-03-22", Cost: 3000, Description: "плановая замена масла"})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -30,9 +30,9 @@ func TestMaintenanceRepository_AddMaintenanceEvent(t *testing.T) {
 func TestMaintenanceRepository_ListMaintenanceEvents(t *testing.T) {
 	repo, mock, cleanup := newMaintenanceRepoWithMock()
 	defer cleanup()
-	rows := sqlmock.NewRows([]string{"id", "car_id", "type", "date", "cost"}).
-		AddRow("1", "1", "oil_change", "2026-03-22", 3000.0)
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, car_id, type, date, cost FROM maintenance_events")).
+	rows := sqlmock.NewRows([]string{"id", "car_id", "type", "date", "cost", "description"}).
+		AddRow("1", "1", "oil_change", "2026-03-22", 3000.0, "плановая замена масла")
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, car_id, type, date, cost, description FROM maintenance_events")).
 		WillReturnRows(rows)
 	events, err := repo.ListMaintenanceEvents()
 	if err != nil {
