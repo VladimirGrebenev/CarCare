@@ -2,277 +2,629 @@
   import { onMount } from 'svelte';
   import { ensureAuthenticated } from '../../lib/authGuard';
   import PageLayout from '../../components/layout/PageLayout.svelte';
-  import Table from '../../components/ui/Table.svelte';
-  import Button from '../../components/ui/Button.svelte';
   import Loader from '../../components/ui/Loader.svelte';
   import EmptyState from '../../components/ui/EmptyState.svelte';
-  import Toast from '../../components/ui/Toast.svelte';
   import {
-    reportsList,
-    reportsLoading,
-    reportsError,
-    reportsSummary,
-    loadReports,
-  } from '../../stores/reports';
-  import { fetchCars } from '../../lib/api';
+    fetchFuelHistory,
+    fetchMaintenanceHistory,
+    fetchFines,
+    fetchCars,
+  } from '../../lib/api';
   import type { Car } from '../../lib/types';
 
-  const COLUMNS = [
-    { label: 'Период', key: 'period' },
-    { label: 'Тип', key: '_typeLabel' },
-    { label: 'Кол-во', key: 'count' },
-    { label: 'Сумма (₽)', key: '_amount' },
-  ];
+  // ── Types ────────────────────────────────────────────────────────────────────
 
-  const PERIOD_OPTIONS = [
-    { value: '', label: 'Все периоды' },
-    { value: 'month', label: 'Текущий месяц' },
-    { value: 'quarter', label: 'Квартал' },
-    { value: 'year', label: 'Текущий год' },
-  ];
-
-  const TYPE_OPTIONS = [
-    { value: '', label: 'Все типы расходов' },
-    { value: 'fuel', label: 'Заправки' },
-    { value: 'maintenance', label: 'Техобслуживание' },
-    { value: 'fine', label: 'Штрафы' },
-  ];
-
-  const TYPE_LABELS: Record<string, string> = {
-    fuel: 'Заправки',
-    maintenance: 'ТО',
-    fine: 'Штрафы',
+  type FuelEvent = {
+    id: string;
+    date: string;
+    liters: number;
+    price: number;
+    fuelType?: string;
   };
 
-  let cars = $state<Car[]>([]);
-  let filterPeriod = $state('');
-  let filterCarId = $state('');
-  let filterType = $state('');
-  let toast = $state({ open: false, message: '', type: 'error' as 'info' | 'success' | 'error' });
+  type MaintenanceEvent = {
+    id: string;
+    date: string;
+    type: string;
+    cost: number;
+    carId?: string;
+  };
 
-  let tableRows = $derived(
-    $reportsList.map(r => ({
-      ...r,
-      _typeLabel: TYPE_LABELS[r.type] ?? r.type,
-      _amount: Number(r.amount).toLocaleString('ru-RU', { minimumFractionDigits: 2 }) + ' ₽',
-    }))
-  );
+  type Fine = {
+    id: string;
+    date: string;
+    type?: string;
+    amount: number;
+    status?: string;
+    description?: string;
+    carId?: string;
+  };
 
-  const maxBar = $derived(
-    Math.max($reportsSummary.totalFuel, $reportsSummary.totalMaintenance, $reportsSummary.totalFines, 1)
-  );
+  // ── Constants ─────────────────────────────────────────────────────────────────
 
-  const summaryCards = $derived([
-    {
-      label: 'Заправки',
-      value: $reportsSummary.totalFuel,
-      color: 'var(--accent)',
-      bgColor: 'var(--accent-light)',
-      icon: '⛽',
-    },
-    {
-      label: 'Техобслуживание',
-      value: $reportsSummary.totalMaintenance,
-      color: 'var(--success)',
-      bgColor: 'var(--success-light)',
-      icon: '🔧',
-    },
-    {
-      label: 'Штрафы',
-      value: $reportsSummary.totalFines,
-      color: 'var(--danger)',
-      bgColor: 'var(--danger-light)',
-      icon: '📋',
-    },
-    {
-      label: 'Итого',
-      value: $reportsSummary.total,
-      color: 'var(--text-primary)',
-      bgColor: 'rgba(255,255,255,0.04)',
-      icon: '💰',
-    },
-  ]);
+  const FUEL_TYPE_LABELS: Record<string, string> = {
+    petrol: 'Бензин',
+    diesel: 'Дизель',
+    gas: 'Газ',
+    electric: 'Электро',
+  };
 
-  function applyFilters() {
-    loadReports({ period: filterPeriod, carId: filterCarId, type: filterType });
+  type ReportSummary = {
+    total_fuel_cost: number;
+    total_maintenance_cost: number;
+    total_fines_amount: number;
+    fuel_count: number;
+    maintenance_count: number;
+    fines_count: number;
+  };
+
+  type ViewMode = 'table' | 'chart';
+  type Period = 'week' | 'month' | 'custom';
+
+  // ── State ────────────────────────────────────────────────────────────────────
+
+  type Tab = 'overview' | 'fuel' | 'maintenance' | 'fines';
+  let activeTab = $state<Tab>('overview');
+
+  let loading = $state(true);
+  let error = $state<string | null>(null);
+
+  let fuelList = $state<FuelEvent[]>([]);
+  let maintenanceList = $state<MaintenanceEvent[]>([]);
+  let finesList = $state<Fine[]>([]);
+  let carsList = $state<Car[]>([]);
+  let summary = $state<ReportSummary>({
+    total_fuel_cost: 0,
+    total_maintenance_cost: 0,
+    total_fines_amount: 0,
+    fuel_count: 0,
+    maintenance_count: 0,
+    fines_count: 0,
+  });
+
+  // View/Period state
+  let fuelView = $state<ViewMode>('table');
+  let fuelPeriod = $state<Period>('month');
+  let fuelDateFrom = $state('');
+  let fuelDateTo = $state('');
+
+  let maintenanceView = $state<ViewMode>('table');
+  let maintenancePeriod = $state<Period>('month');
+  let maintenanceDateFrom = $state('');
+  let maintenanceDateTo = $state('');
+
+  let finesView = $state<ViewMode>('table');
+  let finesPeriod = $state<Period>('month');
+  let finesDateFrom = $state('');
+  let finesDateTo = $state('');
+
+  // ── Derived ──────────────────────────────────────────────────────────────────
+
+  function fuelCost(e: FuelEvent): number {
+    return Number(e.liters) * Number(e.price);
   }
 
-  function resetFilters() {
-    filterPeriod = '';
-    filterCarId = '';
-    filterType = '';
-    loadReports({});
+  const fuelTotal = $derived(
+    fuelList.reduce((sum, e) => sum + fuelCost(e), 0)
+  );
+
+  const maintenanceTotal = $derived(
+    maintenanceList.reduce((sum, e) => sum + (Number(e.cost) || 0), 0)
+  );
+
+  const finesTotal = $derived(
+    finesList.reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
+  );
+
+  const grandTotal = $derived(fuelTotal + maintenanceTotal + finesTotal);
+
+  // ── Chart helpers ─────────────────────────────────────────────────────────────
+
+  function getDateRange(period: Period, from: string, to: string): [Date, Date] {
+    const now = new Date();
+    if (period === 'week') {
+      const start = new Date(now); start.setDate(now.getDate() - 6);
+      return [start, now];
+    }
+    if (period === 'month') {
+      const start = new Date(now); start.setDate(now.getDate() - 29);
+      return [start, now];
+    }
+    return [from ? new Date(from) : new Date(0), to ? new Date(to) : now];
+  }
+
+  type DayPoint = { day: string; value: number };
+
+  function groupByDay<T extends { date: string }>(
+    items: T[],
+    getValue: (item: T) => number,
+    period: Period, from: string, to: string
+  ): DayPoint[] {
+    const [start, end] = getDateRange(period, from, to);
+    const map = new Map<string, number>();
+    const cur = new Date(start);
+    while (cur <= end) {
+      map.set(cur.toISOString().split('T')[0], 0);
+      cur.setDate(cur.getDate() + 1);
+    }
+    for (const item of items) {
+      const d = item.date?.split('T')[0] ?? '';
+      if (map.has(d)) map.set(d, (map.get(d) ?? 0) + getValue(item));
+    }
+    return Array.from(map.entries()).map(([day, value]) => ({ day, value }));
+  }
+
+  const fuelChartData = $derived(
+    groupByDay(fuelList, e => fuelCost(e), fuelPeriod, fuelDateFrom, fuelDateTo)
+  );
+  const maintenanceChartData = $derived(
+    groupByDay(maintenanceList, e => Number(e.cost) || 0, maintenancePeriod, maintenanceDateFrom, maintenanceDateTo)
+  );
+  const finesChartData = $derived(
+    groupByDay(finesList, e => Number(e.amount) || 0, finesPeriod, finesDateFrom, finesDateTo)
+  );
+
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+
+  function fmt(value: number): string {
+    return value.toLocaleString('ru-RU') + ' ₽';
+  }
+
+  function fmtDate(dateStr: string): string {
+    if (!dateStr) return '—';
+    try {
+      return new Date(dateStr).toLocaleDateString('ru-RU');
+    } catch {
+      return dateStr;
+    }
+  }
+
+  // ── Car helpers ───────────────────────────────────────────────────────────────
+
+  function getCarLabel(carId: string): string {
+    if (!carId) return '—';
+    const car = carsList.find(c => c.id === carId);
+    if (!car) return '—';
+    return [car.brand, car.model, car.plate ? `(${car.plate})` : ''].filter(Boolean).join(' ');
+  }
+
+  // ── Data loading ─────────────────────────────────────────────────────────────
+
+  async function loadAll() {
+    loading = true;
+    error = null;
+    try {
+      const [fuelRaw, maintenanceRaw, finesRaw, reportRaw, carsRaw] = await Promise.all([
+        fetchFuelHistory().catch(() => []),
+        fetchMaintenanceHistory().catch(() => []),
+        fetchFines().catch(() => []),
+        fetch('/api/reports', {
+          credentials: 'include',
+          headers: {
+            Authorization: `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('authToken') ?? '' : ''}`
+          }
+        }).then(r => r.ok ? r.json() : null).catch(() => null),
+        fetchCars().catch(() => []),
+      ]);
+
+      fuelList = Array.isArray(fuelRaw) ? fuelRaw : [];
+      maintenanceList = Array.isArray(maintenanceRaw) ? maintenanceRaw : [];
+      finesList = Array.isArray(finesRaw) ? finesRaw : [];
+      carsList = Array.isArray(carsRaw) ? carsRaw : [];
+
+      if (reportRaw && typeof reportRaw === 'object' && !Array.isArray(reportRaw)) {
+        summary = {
+          total_fuel_cost: Number(reportRaw.total_fuel_cost) || 0,
+          total_maintenance_cost: Number(reportRaw.total_maintenance_cost) || 0,
+          total_fines_amount: Number(reportRaw.total_fines_amount) || 0,
+          fuel_count: Number(reportRaw.fuel_count) || 0,
+          maintenance_count: Number(reportRaw.maintenance_count) || 0,
+          fines_count: Number(reportRaw.fines_count) || 0,
+        };
+      }
+    } catch (e) {
+      error = e instanceof Error ? e.message : 'Ошибка загрузки данных';
+    } finally {
+      loading = false;
+    }
   }
 
   onMount(async () => {
     await ensureAuthenticated();
-    try {
-      const result = await fetchCars();
-      cars = Array.isArray(result) ? result : [];
-    } catch {
-      cars = [];
-    }
-    loadReports({});
+    await loadAll();
   });
 </script>
 
+{#snippet barChart(data: DayPoint[], color: string)}
+  {@const maxVal = Math.max(...data.map(d => d.value), 1)}
+  {@const w = 600}
+  {@const h = 200}
+  {@const pad = 40}
+  {@const barW = Math.max(2, (w - pad * 2) / data.length - 2)}
+  <div class="bar-chart-wrap">
+    <svg viewBox="0 0 {w} {h + pad}" class="bar-svg">
+      {#each [0, 0.25, 0.5, 0.75, 1] as frac}
+        {@const y = pad + (h - h * frac)}
+        <line x1={pad} y1={y} x2={w} y2={y} stroke="var(--border)" stroke-width="1"/>
+        <text x={pad - 4} y={y + 4} text-anchor="end" font-size="10" fill="var(--text-secondary)">
+          {Math.round(maxVal * frac).toLocaleString('ru-RU')}
+        </text>
+      {/each}
+      {#each data as point, i}
+        {@const x = pad + i * ((w - pad * 2) / data.length)}
+        {@const barH = point.value > 0 ? Math.max(2, (point.value / maxVal) * h) : 0}
+        {@const y = pad + h - barH}
+        <rect x={x} y={y} width={barW} height={barH} fill={color} rx="2" opacity="0.85"/>
+        {#if data.length <= 14}
+          <text x={x + barW / 2} y={h + pad + 12} text-anchor="middle" font-size="9" fill="var(--text-secondary)">
+            {point.day.slice(5)}
+          </text>
+        {/if}
+      {/each}
+    </svg>
+  </div>
+{/snippet}
+
 <PageLayout title="Отчёты и статистика">
-  <!-- Filters -->
-  <div class="filters-panel">
-    <div class="filters-row">
-      <div class="filter-field">
-        <label class="filter-label" for="report-period">Период</label>
-        <select id="report-period" class="field-select" bind:value={filterPeriod}>
-          {#each PERIOD_OPTIONS as opt}
-            <option value={opt.value}>{opt.label}</option>
-          {/each}
-        </select>
-      </div>
-      <div class="filter-field">
-        <label class="filter-label" for="report-car">Автомобиль</label>
-        <select id="report-car" class="field-select" bind:value={filterCarId}>
-          <option value="">Все автомобили</option>
-          {#each cars as car}
-            <option value={car.id}>{car.brand} {car.model} ({car.plate})</option>
-          {/each}
-        </select>
-      </div>
-      <div class="filter-field">
-        <label class="filter-label" for="report-type">Тип расходов</label>
-        <select id="report-type" class="field-select" bind:value={filterType}>
-          {#each TYPE_OPTIONS as opt}
-            <option value={opt.value}>{opt.label}</option>
-          {/each}
-        </select>
-      </div>
-      <div class="filter-actions">
-        <Button variant="primary" onclick={applyFilters}>Применить</Button>
-        <Button variant="secondary" onclick={resetFilters}>Сброс</Button>
-      </div>
-    </div>
+  <!-- Tabs nav -->
+  <div class="tabs-nav" role="tablist">
+    {#each ([
+      { id: 'overview',     label: 'Общий' },
+      { id: 'fuel',         label: 'Топливо' },
+      { id: 'maintenance',  label: 'ТО' },
+      { id: 'fines',        label: 'Штрафы' },
+    ] as const) as tab}
+      <button
+        role="tab"
+        class="tab-btn"
+        class:active={activeTab === tab.id}
+        aria-selected={activeTab === tab.id}
+        onclick={() => activeTab = tab.id as Tab}
+      >
+        {tab.label}
+      </button>
+    {/each}
   </div>
 
-  {#if $reportsLoading}
+  {#if loading}
     <div class="center-loader">
       <Loader size={48} />
     </div>
-  {:else if $reportsError}
+  {:else if error}
     <div class="error-banner" role="alert">
-      <span class="error-icon">⚠️</span>
-      <span>{$reportsError}</span>
+      <span class="error-icon">⚠</span>
+      <span>{error}</span>
     </div>
   {:else}
-    <!-- Summary cards -->
-    <div class="summary-grid">
-      {#each summaryCards as card}
-        <div class="summary-card" style="--card-color:{card.color}; --card-bg:{card.bgColor};">
-          <div class="summary-icon">{card.icon}</div>
-          <div class="summary-body">
-            <div class="summary-label">{card.label}</div>
-            <div class="summary-value">{card.value.toLocaleString('ru-RU')} ₽</div>
+
+    <!-- ── Tab: Overview ─────────────────────────────────────────────────────── -->
+    {#if activeTab === 'overview'}
+      <div class="overview-section">
+        <!-- Summary cards -->
+        <div class="summary-grid">
+          <div class="summary-card" style="--card-color: var(--accent);">
+            <div class="summary-label">Топливо</div>
+            <div class="summary-value">{fmt(fuelTotal)}</div>
+            <div class="summary-sub">{fuelList.length} заправок</div>
+          </div>
+          <div class="summary-card" style="--card-color: var(--success);">
+            <div class="summary-label">ТО</div>
+            <div class="summary-value">{fmt(maintenanceTotal)}</div>
+            <div class="summary-sub">{maintenanceList.length} записей</div>
+          </div>
+          <div class="summary-card" style="--card-color: var(--danger);">
+            <div class="summary-label">Штрафы</div>
+            <div class="summary-value">{fmt(finesTotal)}</div>
+            <div class="summary-sub">{finesList.length} штрафов</div>
           </div>
         </div>
-      {/each}
-    </div>
 
-    <!-- Bar chart -->
-    {#if $reportsSummary.total > 0}
-      <div class="chart-section">
-        <h3 class="section-title">Распределение расходов</h3>
-        <div class="bar-chart">
-          {#each [
-            { label: 'Заправки', value: $reportsSummary.totalFuel, color: 'var(--accent)' },
-            { label: 'Техобслуживание', value: $reportsSummary.totalMaintenance, color: 'var(--success)' },
-            { label: 'Штрафы', value: $reportsSummary.totalFines, color: 'var(--danger)' },
-          ] as bar}
-            <div class="bar-row">
-              <span class="bar-label">{bar.label}</span>
-              <div class="bar-track">
-                <div
-                  class="bar-fill"
-                  style="width:{(bar.value / maxBar * 100).toFixed(1)}%; background:{bar.color};"
-                  role="progressbar"
-                  aria-valuenow={bar.value}
-                  aria-valuemin={0}
-                  aria-valuemax={maxBar}
-                ></div>
-              </div>
-              <span class="bar-amount">
-                {bar.value.toLocaleString('ru-RU')} ₽
-                {#if $reportsSummary.total > 0}
-                  <span class="bar-percent">({(bar.value / $reportsSummary.total * 100).toFixed(0)}%)</span>
-                {/if}
-              </span>
-            </div>
-          {/each}
+        <!-- Grand total -->
+        <div class="total-row">
+          <span class="total-label">Итого расходов:</span>
+          <span class="total-value">{fmt(grandTotal)}</span>
         </div>
+
+        <!-- SVG Pie chart -->
+        {#if grandTotal > 0}
+          {@const pieItems = [
+            { label: 'Топливо',  value: fuelTotal,        color: '#0078d4' },
+            { label: 'ТО',       value: maintenanceTotal, color: '#3fb950' },
+            { label: 'Штрафы',   value: finesTotal,       color: '#f85149' },
+          ]}
+          {@const slices = pieItems.filter(s => s.value > 0)}
+          {@const pieTotal = slices.reduce((s, sl) => s + sl.value, 0)}
+          <div class="chart-section">
+            <h3 class="section-title">Распределение расходов</h3>
+            <div class="pie-wrap">
+              <svg viewBox="-1 -1 2 2" class="pie-svg" style="transform: rotate(-90deg)">
+                {#each slices as slice, i}
+                  {@const startAngle = slices.slice(0, i).reduce((s, sl) => s + sl.value / pieTotal * Math.PI * 2, 0)}
+                  {@const endAngle = startAngle + slice.value / pieTotal * Math.PI * 2}
+                  {@const x1 = Math.cos(startAngle)}
+                  {@const y1 = Math.sin(startAngle)}
+                  {@const x2 = Math.cos(endAngle)}
+                  {@const y2 = Math.sin(endAngle)}
+                  {@const largeArc = slice.value / pieTotal > 0.5 ? 1 : 0}
+                  <path
+                    d="M 0 0 L {x1} {y1} A 1 1 0 {largeArc} 1 {x2} {y2} Z"
+                    fill={slice.color}
+                    opacity="0.9"
+                    class="pie-slice"
+                  />
+                {/each}
+              </svg>
+              <div class="pie-legend">
+                {#each pieItems as item}
+                  {#if item.value > 0}
+                    <div class="legend-item">
+                      <span class="legend-dot" style="background:{item.color}"></span>
+                      <span class="legend-label">{item.label}</span>
+                      <span class="legend-value">{fmt(item.value)}</span>
+                      <span class="legend-pct">({(item.value / grandTotal * 100).toFixed(0)}%)</span>
+                    </div>
+                  {/if}
+                {/each}
+              </div>
+            </div>
+          </div>
+        {:else}
+          <EmptyState message="Нет данных для отображения. Добавьте заправки, ТО или штрафы." />
+        {/if}
       </div>
     {/if}
 
-    <!-- Detail table -->
-    <div class="detail-section">
-      <h3 class="section-title">Детализация</h3>
-      {#if $reportsList.length === 0}
-        <EmptyState message="Нет данных за выбранный период. Попробуйте изменить фильтры." />
-      {:else}
-        <Table
-          columns={COLUMNS}
-          rows={tableRows}
-          emptyText="Нет данных"
-        />
-      {/if}
-    </div>
-  {/if}
+    <!-- ── Tab: Fuel ──────────────────────────────────────────────────────────── -->
+    {#if activeTab === 'fuel'}
+      <div class="tab-section">
+        <div class="section-header">
+          <h3 class="section-title">История заправок</h3>
+          <span class="section-total">Итого: {fmt(fuelTotal)}</span>
+        </div>
+        <div class="view-controls">
+          <div class="view-toggle">
+            <button class="toggle-btn" class:active={fuelView === 'table'} onclick={() => fuelView = 'table'}>Таблица</button>
+            <button class="toggle-btn" class:active={fuelView === 'chart'} onclick={() => fuelView = 'chart'}>График</button>
+          </div>
+          {#if fuelView === 'chart'}
+            <div class="period-controls">
+              <button class="toggle-btn" class:active={fuelPeriod === 'week'} onclick={() => fuelPeriod = 'week'}>Неделя</button>
+              <button class="toggle-btn" class:active={fuelPeriod === 'month'} onclick={() => fuelPeriod = 'month'}>Месяц</button>
+              <button class="toggle-btn" class:active={fuelPeriod === 'custom'} onclick={() => fuelPeriod = 'custom'}>Период</button>
+              {#if fuelPeriod === 'custom'}
+                <input type="date" class="field-input-sm" bind:value={fuelDateFrom} />
+                <span>—</span>
+                <input type="date" class="field-input-sm" bind:value={fuelDateTo} />
+              {/if}
+            </div>
+          {/if}
+        </div>
+        {#if fuelList.length === 0}
+          <EmptyState message="Нет данных о заправках." />
+        {:else if fuelView === 'table'}
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Дата</th>
+                  <th>Тип топлива</th>
+                  <th>Объём, л</th>
+                  <th>Цена за л</th>
+                  <th>Сумма</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each fuelList as e}
+                  <tr>
+                    <td>{fmtDate(e.date)}</td>
+                    <td>{FUEL_TYPE_LABELS[e.fuelType ?? ''] ?? e.fuelType ?? '—'}</td>
+                    <td>{Number(e.liters).toLocaleString('ru-RU')}</td>
+                    <td>{fmt(Number(e.price))}</td>
+                    <td class="amount-cell">{fmt(fuelCost(e))}</td>
+                  </tr>
+                {/each}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="4" class="foot-label">Итого</td>
+                  <td class="amount-cell foot-total">{fmt(fuelTotal)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        {:else}
+          {@render barChart(fuelChartData, '#0078d4')}
+        {/if}
+      </div>
+    {/if}
 
-  <Toast open={toast.open} message={toast.message} type={toast.type} />
+    <!-- ── Tab: Maintenance ───────────────────────────────────────────────────── -->
+    {#if activeTab === 'maintenance'}
+      <div class="tab-section">
+        <div class="section-header">
+          <h3 class="section-title">История техобслуживания</h3>
+          <span class="section-total">Итого: {fmt(maintenanceTotal)}</span>
+        </div>
+        <div class="view-controls">
+          <div class="view-toggle">
+            <button class="toggle-btn" class:active={maintenanceView === 'table'} onclick={() => maintenanceView = 'table'}>Таблица</button>
+            <button class="toggle-btn" class:active={maintenanceView === 'chart'} onclick={() => maintenanceView = 'chart'}>График</button>
+          </div>
+          {#if maintenanceView === 'chart'}
+            <div class="period-controls">
+              <button class="toggle-btn" class:active={maintenancePeriod === 'week'} onclick={() => maintenancePeriod = 'week'}>Неделя</button>
+              <button class="toggle-btn" class:active={maintenancePeriod === 'month'} onclick={() => maintenancePeriod = 'month'}>Месяц</button>
+              <button class="toggle-btn" class:active={maintenancePeriod === 'custom'} onclick={() => maintenancePeriod = 'custom'}>Период</button>
+              {#if maintenancePeriod === 'custom'}
+                <input type="date" class="field-input-sm" bind:value={maintenanceDateFrom} />
+                <span>—</span>
+                <input type="date" class="field-input-sm" bind:value={maintenanceDateTo} />
+              {/if}
+            </div>
+          {/if}
+        </div>
+        {#if maintenanceList.length === 0}
+          <EmptyState message="Нет данных о техобслуживании." />
+        {:else if maintenanceView === 'table'}
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Дата</th>
+                  <th>Автомобиль</th>
+                  <th>Тип работ</th>
+                  <th>Стоимость</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each maintenanceList as e}
+                  <tr>
+                    <td>{fmtDate(e.date)}</td>
+                    <td>{getCarLabel(String(e.carId ?? ''))}</td>
+                    <td>{e.type ?? '—'}</td>
+                    <td class="amount-cell">{fmt(Number(e.cost))}</td>
+                  </tr>
+                {/each}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="3" class="foot-label">Итого</td>
+                  <td class="amount-cell foot-total">{fmt(maintenanceTotal)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        {:else}
+          {@render barChart(maintenanceChartData, '#3fb950')}
+        {/if}
+      </div>
+    {/if}
+
+    <!-- ── Tab: Fines ─────────────────────────────────────────────────────────── -->
+    {#if activeTab === 'fines'}
+      <div class="tab-section">
+        <div class="section-header">
+          <h3 class="section-title">Штрафы</h3>
+          <span class="section-total">Итого: {fmt(finesTotal)}</span>
+        </div>
+        <div class="view-controls">
+          <div class="view-toggle">
+            <button class="toggle-btn" class:active={finesView === 'table'} onclick={() => finesView = 'table'}>Таблица</button>
+            <button class="toggle-btn" class:active={finesView === 'chart'} onclick={() => finesView = 'chart'}>График</button>
+          </div>
+          {#if finesView === 'chart'}
+            <div class="period-controls">
+              <button class="toggle-btn" class:active={finesPeriod === 'week'} onclick={() => finesPeriod = 'week'}>Неделя</button>
+              <button class="toggle-btn" class:active={finesPeriod === 'month'} onclick={() => finesPeriod = 'month'}>Месяц</button>
+              <button class="toggle-btn" class:active={finesPeriod === 'custom'} onclick={() => finesPeriod = 'custom'}>Период</button>
+              {#if finesPeriod === 'custom'}
+                <input type="date" class="field-input-sm" bind:value={finesDateFrom} />
+                <span>—</span>
+                <input type="date" class="field-input-sm" bind:value={finesDateTo} />
+              {/if}
+            </div>
+          {/if}
+        </div>
+        {#if finesList.length === 0}
+          <EmptyState message="Нет данных о штрафах." />
+        {:else if finesView === 'table'}
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Дата</th>
+                  <th>Автомобиль</th>
+                  <th>Нарушение</th>
+                  <th>Статус</th>
+                  <th>Сумма</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each finesList as e}
+                  <tr>
+                    <td>{fmtDate(e.date)}</td>
+                    <td>{getCarLabel(String(e.carId ?? ''))}</td>
+                    <td>{e.description || e.type || '—'}</td>
+                    <td>
+                      <span class="badge" class:badge-paid={e.status === 'paid'} class:badge-unpaid={e.status !== 'paid'}>
+                        {e.status === 'paid' ? 'Оплачен' : 'Не оплачен'}
+                      </span>
+                    </td>
+                    <td class="amount-cell">{fmt(Number(e.amount))}</td>
+                  </tr>
+                {/each}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="4" class="foot-label">Итого</td>
+                  <td class="amount-cell foot-total">{fmt(finesTotal)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        {:else}
+          {@render barChart(finesChartData, '#f85149')}
+        {/if}
+      </div>
+    {/if}
+
+  {/if}
 </PageLayout>
 
 <style>
-/* ── Filters ── */
-.filters-panel {
+/* ── Tabs nav ────────────────────────────────────────────────────────────── */
+.tabs-nav {
+  display: flex;
+  gap: 0.25rem;
   background: var(--bg-layer);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 1.25rem 1.5rem;
-  margin-bottom: 1.5rem;
+  padding: 0.375rem;
   box-shadow: var(--shadow-sm);
 }
-.filters-row {
-  display: flex;
-  gap: 0.75rem;
-  align-items: flex-end;
-  flex-wrap: wrap;
-}
-.filter-field { display: flex; flex-direction: column; gap: 0.375rem; min-width: 160px; }
-.filter-label { font-size: 0.8125rem; font-weight: 600; color: var(--text-secondary); }
-.filter-actions { display: flex; gap: 0.5rem; align-items: center; padding-top: 1.25rem; }
 
-.field-select {
-  padding: 0.5625rem 0.875rem;
+.tab-btn {
+  flex: 1;
+  padding: 0.625rem 1rem;
+  border: none;
   border-radius: var(--radius-md);
-  border: 1px solid var(--border);
-  background: var(--bg-input);
-  color: var(--text-primary);
+  background: transparent;
+  color: var(--text-secondary);
   font-size: 0.9375rem;
   font-family: var(--font);
-  outline: none;
+  font-weight: 500;
   cursor: pointer;
-  transition: border-color var(--transition), box-shadow var(--transition);
-}
-.field-select:focus {
-  border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px var(--accent-light);
+  transition: background var(--transition), color var(--transition);
+  white-space: nowrap;
 }
 
-/* ── Summary cards ── */
+.tab-btn:hover:not(.active) {
+  background: var(--bg-input);
+  color: var(--text-primary);
+}
+
+.tab-btn.active {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ── Summary cards ───────────────────────────────────────────────────────── */
+.overview-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
-  margin-bottom: 1.5rem;
 }
-@media (max-width: 900px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 500px) { .summary-grid { grid-template-columns: 1fr; } }
+
+@media (max-width: 700px) {
+  .summary-grid { grid-template-columns: 1fr; }
+}
 
 .summary-card {
   background: var(--bg-layer);
@@ -281,18 +633,17 @@
   border-radius: var(--radius-lg);
   padding: 1.25rem 1.5rem;
   display: flex;
-  align-items: center;
-  gap: 1rem;
+  flex-direction: column;
+  gap: 0.375rem;
   box-shadow: var(--shadow-sm);
   transition: transform var(--transition), box-shadow var(--transition);
 }
+
 .summary-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 
-.summary-icon { font-size: 1.75rem; flex-shrink: 0; }
-.summary-body { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; }
 .summary-label {
   font-size: 0.75rem;
   font-weight: 600;
@@ -300,58 +651,258 @@
   letter-spacing: 0.06em;
   color: var(--text-secondary);
 }
+
 .summary-value {
-  font-size: 1.25rem;
+  font-size: 1.375rem;
   font-weight: 700;
   color: var(--card-color);
-  white-space: nowrap;
 }
 
-/* ── Bar chart ── */
+.summary-sub {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+/* ── Grand total ─────────────────────────────────────────────────────────── */
+.total-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-layer);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.total-label {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.total-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* ── Chart section ───────────────────────────────────────────────────────── */
+.chart-section {
+  background: var(--bg-layer);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
 .section-title {
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
 }
 
-.chart-section { margin-bottom: 1.5rem; }
-.bar-chart { display: flex; flex-direction: column; gap: 0.875rem; }
-.bar-row { display: flex; align-items: center; gap: 1rem; }
-.bar-label { width: 120px; font-size: 0.875rem; color: var(--text-secondary); text-align: right; flex-shrink: 0; }
-.bar-track {
-  flex: 1;
-  height: 14px;
-  background: var(--border);
-  border-radius: 100px;
-  overflow: hidden;
+/* ── Pie chart ───────────────────────────────────────────────────────────── */
+.pie-wrap {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  flex-wrap: wrap;
 }
-.bar-fill {
-  height: 100%;
-  border-radius: 100px;
-  min-width: 2px;
-  transition: width 0.7s cubic-bezier(.4,0,.2,1);
+.pie-svg {
+  width: 200px;
+  height: 200px;
+  flex-shrink: 0;
+  border-radius: 50%;
 }
-.bar-amount {
-  min-width: 130px;
+.pie-slice {
+  transition: opacity 0.2s;
+  cursor: pointer;
+}
+.pie-slice:hover { opacity: 1 !important; filter: brightness(1.15); }
+.pie-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.legend-label { color: var(--text-secondary); min-width: 60px; }
+.legend-value { font-weight: 600; color: var(--text-primary); }
+.legend-pct { font-size: 0.8rem; color: var(--text-secondary); }
+
+/* ── Bar chart ───────────────────────────────────────────────────────────── */
+.bar-chart-wrap { overflow-x: auto; }
+.bar-svg { width: 100%; min-width: 300px; max-width: 700px; display: block; }
+
+/* ── View controls ───────────────────────────────────────────────────────── */
+.view-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.view-toggle, .period-controls {
+  display: flex;
+  gap: 0.25rem;
+  background: var(--bg-layer);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.25rem;
+}
+.toggle-btn {
+  padding: 0.375rem 0.875rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
   font-size: 0.875rem;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+.toggle-btn.active {
+  background: var(--accent);
+  color: #fff;
   font-weight: 600;
+}
+.field-input-sm {
+  padding: 0.375rem 0.625rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-input);
   color: var(--text-primary);
+  font-size: 0.875rem;
+  font-family: var(--font);
+  outline: none;
+}
+
+/* ── Tab sections ────────────────────────────────────────────────────────── */
+.tab-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.section-header .section-title {
+  margin-bottom: 0;
+}
+
+.section-total {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* ── Data table ──────────────────────────────────────────────────────────── */
+.table-wrap {
+  background: var(--bg-layer);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.data-table th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  background: var(--bg-input);
+  border-bottom: 1px solid var(--border);
+}
+
+.data-table td {
+  padding: 0.75rem 1rem;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border);
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table tbody tr:hover td {
+  background: var(--bg-input);
+}
+
+.amount-cell {
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.bar-percent {
-  font-size: 0.75rem;
-  font-weight: 400;
-  color: var(--text-secondary);
-  margin-left: 0.25rem;
+
+.data-table tfoot td {
+  border-top: 1px solid var(--border);
+  border-bottom: none;
+  background: var(--bg-input);
+  padding: 0.75rem 1rem;
 }
 
-/* ── Detail table ── */
-.detail-section { margin-bottom: 2rem; }
+.foot-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
 
-/* ── States ── */
+.foot-total {
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+/* ── Badges ──────────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 100px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge-paid {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.badge-unpaid {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+/* ── States ──────────────────────────────────────────────────────────────── */
 .center-loader {
   display: flex;
   justify-content: center;
@@ -369,7 +920,10 @@
   border-radius: var(--radius-lg);
   color: var(--danger);
   font-weight: 500;
-  margin-bottom: 1.5rem;
 }
-.error-icon { font-size: 1.25rem; flex-shrink: 0; }
+
+.error-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
 </style>
