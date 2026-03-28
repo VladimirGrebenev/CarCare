@@ -6,7 +6,6 @@
   import Modal from '../../components/ui/Modal.svelte';
   import Button from '../../components/ui/Button.svelte';
   import Toast from '../../components/ui/Toast.svelte';
-  import FAB from '../../components/ui/FAB.svelte';
   import {
     fetchMaintenanceHistory,
     addMaintenance,
@@ -75,6 +74,18 @@
   // Все доступные типы = встроенные + пользовательские
   let allTypes = $derived([...BUILTIN_TYPES, ...customTypes.filter(t => !BUILTIN_TYPES.includes(t))]);
 
+  function formatDate(raw: string | null | undefined): string {
+    if (!raw) return '—';
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) return String(raw);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${day}.${month}.${year} ${hours}:${minutes}`;
+  }
+
   function getCarLabel(carId: string): string {
     if (!carId) return '—';
     const car = cars.find(c => c.id === carId);
@@ -87,7 +98,7 @@
       .filter(item => !filterCarId || item.carId === filterCarId)
       .map(item => ({
         ...item,
-        _date: item.date ?? '—',
+        _date: formatDate(item.date),
         _car: getCarLabel(String(item.carId ?? '')),
         _cost: Number(item.cost).toLocaleString('ru-RU', { minimumFractionDigits: 2 }) + ' ₽',
       }))
@@ -232,8 +243,12 @@
   >
     {#snippet actions(row)}
       <div class="row-actions">
-        <Button variant="ghost" onclick={(e) => { e.stopPropagation(); openEdit(row); }}>✏️</Button>
-        <Button variant="danger" onclick={(e) => { e.stopPropagation(); confirmDeleteId = row.id as string; }}>🗑️</Button>
+        <button class="icon-btn edit-btn" title="Редактировать" onclick={(e) => { e.stopPropagation(); openEdit(row); }}>
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M11.013 1.427a1.75 1.75 0 012.474 2.474L4.81 12.578l-3.182.354.354-3.181 8.031-8.324z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="icon-btn delete-btn" title="Удалить" onclick={(e) => { e.stopPropagation(); confirmDeleteId = row.id as string; }}>
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M6 2h4M2 4h12M5 4l.5 8h5L11 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
       </div>
     {/snippet}
   </Table>
@@ -318,7 +333,6 @@
   </Modal>
 
   <Toast open={toast.open} message={toast.message} type={toast.type} />
-  <FAB label="Добавить ТО" onClick={openAdd} />
 </PageLayout>
 
 <style>
@@ -364,6 +378,22 @@
   box-shadow: 0 0 0 3px var(--accent-light);
 }
 
-.row-actions { display: flex; gap: 0.25rem; }
+.row-actions { display: flex; gap: 0.25rem; align-items: center; }
 .confirm-text { color: var(--text-secondary); line-height: 1.6; margin: 0; }
+
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+.edit-btn:hover { background: var(--accent-light); color: var(--accent-text); border-color: rgba(0,120,212,0.4); }
+.delete-btn:hover { background: var(--danger-light); color: var(--danger); border-color: var(--danger); }
 </style>
