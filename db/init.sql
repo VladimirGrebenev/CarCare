@@ -11,13 +11,15 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 CREATE TABLE IF NOT EXISTS cars (
-    id    UUID PRIMARY KEY,
-    brand VARCHAR(100) NOT NULL,
-    model VARCHAR(100) NOT NULL,
-    year  INT          NOT NULL,
-    vin   VARCHAR(100) NOT NULL UNIQUE,
-    plate VARCHAR(20)
+    id      UUID PRIMARY KEY,
+    user_id UUID         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    brand   VARCHAR(100) NOT NULL,
+    model   VARCHAR(100) NOT NULL,
+    year    INT          NOT NULL,
+    vin     VARCHAR(100) NOT NULL UNIQUE,
+    plate   VARCHAR(20)
 );
+CREATE INDEX IF NOT EXISTS idx_cars_user_id ON cars(user_id);
 
 CREATE TABLE IF NOT EXISTS fuel_events (
     id     UUID PRIMARY KEY,
@@ -25,17 +27,17 @@ CREATE TABLE IF NOT EXISTS fuel_events (
     volume NUMERIC(10,2)  NOT NULL,
     price  NUMERIC(10,2)  NOT NULL,
     type   VARCHAR(50)    NOT NULL,
-    date   DATE           NOT NULL,
-    CONSTRAINT idx_fuel_events_car_id_date UNIQUE(car_id, date)
+    date   DATE           NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_fuel_events_car_id ON fuel_events(car_id);
 
 CREATE TABLE IF NOT EXISTS maintenance_events (
-    id     UUID PRIMARY KEY,
-    car_id UUID          NOT NULL REFERENCES cars(id) ON DELETE CASCADE,
-    type   VARCHAR(100)  NOT NULL,
-    date   DATE          NOT NULL,
-    cost   NUMERIC(10,2) NOT NULL
+    id          UUID PRIMARY KEY,
+    car_id      UUID          NOT NULL REFERENCES cars(id) ON DELETE CASCADE,
+    type        VARCHAR(100)  NOT NULL,
+    date        DATE          NOT NULL,
+    cost        NUMERIC(10,2) NOT NULL,
+    description TEXT          NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_maintenance_events_car_id ON maintenance_events(car_id);
 
