@@ -5,10 +5,8 @@
   import Table from '../../components/ui/Table.svelte';
   import Modal from '../../components/ui/Modal.svelte';
   import Button from '../../components/ui/Button.svelte';
-  import Input from '../../components/ui/Input.svelte';
   import Toast from '../../components/ui/Toast.svelte';
   import FAB from '../../components/ui/FAB.svelte';
-  import { writable, get } from 'svelte/store';
   import {
     fetchMaintenanceHistory,
     addMaintenance,
@@ -18,22 +16,43 @@
   } from '../../lib/api';
   import type { Car } from '../../lib/types';
 
-  const MAINTENANCE_TYPES = [
-    { value: 'oil', label: 'Замена масла' },
-    { value: 'tires', label: 'Шиномонтаж / смена резины' },
-    { value: 'brakes', label: 'Тормозная система' },
-    { value: 'filters', label: 'Замена фильтров' },
-    { value: 'battery', label: 'Аккумулятор' },
-    { value: 'inspection', label: 'Техосмотр' },
-    { value: 'other', label: 'Другое' },
+  // Встроенные типы услуг
+  const BUILTIN_TYPES = [
+    'Замена масла',
+    'Шиномонтаж / смена резины',
+    'Тормозная система',
+    'Замена фильтров',
+    'Аккумулятор',
+    'Техосмотр',
+    'Замена свечей зажигания',
+    'Замена ремня ГРМ',
+    'Антифриз / охлаждающая жидкость',
+    'Развал-схождение',
+    'Промывка форсунок',
+    'Замена тормозных дисков и колодок',
   ];
+
+  const CUSTOM_TYPES_KEY = 'carcare_maintenance_custom_types';
+
+  function loadCustomTypes(): string[] {
+    try {
+      return JSON.parse(localStorage.getItem(CUSTOM_TYPES_KEY) ?? '[]');
+    } catch { return []; }
+  }
+
+  function saveCustomType(typeName: string) {
+    const custom = loadCustomTypes();
+    const trimmed = typeName.trim();
+    if (!trimmed || BUILTIN_TYPES.includes(trimmed) || custom.includes(trimmed)) return;
+    custom.unshift(trimmed);
+    localStorage.setItem(CUSTOM_TYPES_KEY, JSON.stringify(custom.slice(0, 50)));
+  }
 
   const COLUMNS = [
     { label: 'Дата', key: '_date' },
     { label: 'Автомобиль', key: '_car' },
-    { label: 'Тип обслуживания', key: '_typeLabel' },
+    { label: 'Услуга', key: 'type' },
     { label: 'Стоимость (₽)', key: '_cost' },
-    { label: 'Описание', key: 'description' },
   ];
 
   type MaintenanceRecord = {
@@ -42,7 +61,6 @@
     carId: string;
     type: string;
     cost: number;
-    description?: string;
     [key: string]: unknown;
   };
 
@@ -50,33 +68,27 @@
   let loading = $state(false);
   let error = $state<string | null>(null);
   let cars = $state<Car[]>([]);
+  let customTypes = $state<string[]>([]);
 
-  let filterType = $state('');
   let filterCarId = $state('');
+
+  // Все доступные типы = встроенные + пользовательские
+  let allTypes = $derived([...BUILTIN_TYPES, ...customTypes.filter(t => !BUILTIN_TYPES.includes(t))]);
 
   function getCarLabel(carId: string): string {
     if (!carId) return '—';
     const car = cars.find(c => c.id === carId);
     if (!car) return carId;
-    return `${car.brand} ${car.model} (${car.plate})`;
-  }
-
-  function getTypeLabel(type: string): string {
-    return MAINTENANCE_TYPES.find(t => t.value === type)?.label ?? type ?? '—';
+    return `${car.brand} ${car.model}${car.plate ? ` (${car.plate})` : ''}`;
   }
 
   let rows = $derived(
     items
-      .filter(item => {
-        const matchType = !filterType || item.type === filterType;
-        const matchCar = !filterCarId || item.carId === filterCarId;
-        return matchType && matchCar;
-      })
+      .filter(item => !filterCarId || item.carId === filterCarId)
       .map(item => ({
         ...item,
         _date: item.date ?? '—',
         _car: getCarLabel(String(item.carId ?? '')),
-        _typeLabel: getTypeLabel(String(item.type ?? '')),
         _cost: Number(item.cost).toLocaleString('ru-RU', { minimumFractionDigits: 2 }) + ' ₽',
       }))
   );
@@ -92,16 +104,9 @@
     carId: string;
     type: string;
     cost: string;
-    description: string;
   };
 
-  let form = $state<MaintenanceForm>({
-    date: '',
-    carId: '',
-    type: 'oil',
-    cost: '',
-    description: '',
-  });
+  let form = $state<MaintenanceForm>({ date: '', carId: '', type: '', cost: '' });
 
   async function loadItems() {
     loading = true;
@@ -122,9 +127,8 @@
     form = {
       date: new Date().toISOString().split('T')[0],
       carId: cars[0]?.id ?? '',
-      type: 'oil',
+      type: '',
       cost: '',
-      description: '',
     };
     showModal = true;
   }
@@ -134,9 +138,8 @@
     form = {
       date: String(row.date ?? ''),
       carId: String(row.carId ?? ''),
-      type: String(row.type ?? 'other'),
+      type: String(row.type ?? ''),
       cost: String(row.cost ?? ''),
-      description: String(row.description ?? ''),
     };
     showModal = true;
   }
@@ -146,13 +149,23 @@
       toast = { open: true, message: 'Выберите автомобиль', type: 'error' };
       return;
     }
-    if (!form.cost || Number(form.cost) <= 0) {
-      toast = { open: true, message: 'Укажите стоимость', type: 'error' };
+    if (!form.type.trim()) {
+      toast = { open: true, message: 'Укажите тип услуги', type: 'error' };
       return;
     }
+    const cost = Number(form.cost);
+    if (!form.cost || isNaN(cost) || cost < 0) {
+      toast = { open: true, message: 'Укажите корректную стоимость (≥ 0)', type: 'error' };
+      return;
+    }
+
+    // Сохраняем пользовательский тип если он не из встроенных
+    saveCustomType(form.type);
+    customTypes = loadCustomTypes();
+
     saving = true;
     try {
-      const payload = { ...form, cost: Number(form.cost) };
+      const payload = { ...form, type: form.type.trim(), cost };
       if (editingId) {
         const updated = await updateMaintenance(editingId, payload);
         items = items.map(item => item.id === editingId ? { ...item, ...updated } : item);
@@ -164,11 +177,7 @@
       }
       showModal = false;
     } catch (e: unknown) {
-      toast = {
-        open: true,
-        message: e instanceof Error ? e.message : 'Ошибка сохранения',
-        type: 'error',
-      };
+      toast = { open: true, message: e instanceof Error ? e.message : 'Ошибка сохранения', type: 'error' };
     } finally {
       saving = false;
     }
@@ -180,11 +189,7 @@
       items = items.filter(item => item.id !== id);
       toast = { open: true, message: 'Запись удалена', type: 'success' };
     } catch (e: unknown) {
-      toast = {
-        open: true,
-        message: e instanceof Error ? e.message : 'Ошибка удаления',
-        type: 'error',
-      };
+      toast = { open: true, message: e instanceof Error ? e.message : 'Ошибка удаления', type: 'error' };
     } finally {
       confirmDeleteId = null;
     }
@@ -192,12 +197,11 @@
 
   onMount(async () => {
     await ensureAuthenticated();
+    customTypes = loadCustomTypes();
     try {
       const result = await fetchCars();
       cars = Array.isArray(result) ? result : [];
-    } catch {
-      cars = [];
-    }
+    } catch { cars = []; }
     await loadItems();
   });
 </script>
@@ -206,20 +210,11 @@
   <div class="page-toolbar">
     <div class="filters">
       <div class="filter-field">
-        <label class="filter-label" for="maint-filter-type">Тип обслуживания</label>
-        <select id="maint-filter-type" class="field-select" bind:value={filterType}>
-          <option value="">Все типы</option>
-          {#each MAINTENANCE_TYPES as mt}
-            <option value={mt.value}>{mt.label}</option>
-          {/each}
-        </select>
-      </div>
-      <div class="filter-field">
         <label class="filter-label" for="maint-filter-car">Автомобиль</label>
         <select id="maint-filter-car" class="field-select" bind:value={filterCarId}>
           <option value="">Все автомобили</option>
           {#each cars as car}
-            <option value={car.id}>{car.brand} {car.model} ({car.plate})</option>
+            <option value={car.id}>{car.brand} {car.model}{car.plate ? ` (${car.plate})` : ''}</option>
           {/each}
         </select>
       </div>
@@ -247,8 +242,9 @@
     open={showModal}
     title={editingId ? 'Редактировать запись ТО' : 'Добавить запись ТО'}
     onClose={() => showModal = false}
-    width="520px"
+    width="480px"
   >
+    {#snippet children()}
     <div class="form-grid">
       <div class="field">
         <label class="field-label" for="maint-date">Дата *</label>
@@ -259,35 +255,52 @@
         <select id="maint-car" class="field-select" bind:value={form.carId} required>
           <option value="">Выберите автомобиль</option>
           {#each cars as car}
-            <option value={car.id}>{car.brand} {car.model} ({car.plate})</option>
+            <option value={car.id}>{car.brand} {car.model}{car.plate ? ` (${car.plate})` : ''}</option>
           {/each}
         </select>
       </div>
-      <div class="field">
-        <label class="field-label" for="maint-type">Тип обслуживания *</label>
-        <select id="maint-type" class="field-select" bind:value={form.type}>
-          {#each MAINTENANCE_TYPES as mt}
-            <option value={mt.value}>{mt.label}</option>
+
+      <div class="field col-span-2">
+        <label class="field-label" for="maint-type">Услуга *</label>
+        <input
+          id="maint-type"
+          class="field-input"
+          type="text"
+          list="maint-type-list"
+          placeholder="Начните вводить или выберите из списка..."
+          bind:value={form.type}
+          autocomplete="off"
+        />
+        <datalist id="maint-type-list">
+          {#if customTypes.length > 0}
+            <optgroup label="Мои услуги">
+              {#each customTypes as t}
+                <option value={t}>{t}</option>
+              {/each}
+            </optgroup>
+          {/if}
+          {#each allTypes.filter(t => !customTypes.includes(t)) as t}
+            <option value={t}>{t}</option>
           {/each}
-        </select>
+        </datalist>
+        <span class="field-hint">Выберите из списка или введите свою услугу — она сохранится для следующих записей</span>
       </div>
-      <Input
-        label="Стоимость (₽) *"
-        type="number"
-        min="0"
-        step="1"
-        placeholder="5000"
-        bind:value={form.cost}
-        required
-      />
-      <div class="col-span-2">
-        <Input
-          label="Описание"
-          placeholder="Дополнительные детали, пробег, мастерская..."
-          bind:value={form.description}
+
+      <div class="field col-span-2">
+        <label class="field-label" for="maint-cost">Стоимость (₽) *</label>
+        <input
+          id="maint-cost"
+          class="field-input"
+          type="number"
+          min="0"
+          step="1"
+          placeholder="5000"
+          bind:value={form.cost}
+          required
         />
       </div>
     </div>
+    {/snippet}
     {#snippet footer()}
       <Button variant="secondary" onclick={() => showModal = false}>Отмена</Button>
       <Button variant="primary" loading={saving} onclick={handleSave}>Сохранить</Button>
@@ -295,7 +308,9 @@
   </Modal>
 
   <Modal open={!!confirmDeleteId} title="Подтвердите удаление" onClose={() => confirmDeleteId = null}>
+    {#snippet children()}
     <p class="confirm-text">Удалить запись о техобслуживании? Это действие нельзя отменить.</p>
+    {/snippet}
     {#snippet footer()}
       <Button variant="secondary" onclick={() => confirmDeleteId = null}>Отмена</Button>
       <Button variant="danger" onclick={() => confirmDeleteId && handleDelete(confirmDeleteId)}>Удалить</Button>
@@ -316,7 +331,6 @@
   flex-wrap: wrap;
 }
 .filters { display: flex; gap: 0.75rem; flex: 1; flex-wrap: wrap; }
-
 .filter-field { display: flex; flex-direction: column; gap: 0.375rem; }
 .filter-label { font-size: 0.8125rem; font-weight: 600; color: var(--text-secondary); }
 
@@ -324,12 +338,12 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
-  min-width: 380px;
 }
 .col-span-2 { grid-column: span 2; }
 
 .field { display: flex; flex-direction: column; gap: 0.375rem; }
 .field-label { font-size: 0.8125rem; font-weight: 600; color: var(--text-secondary); }
+.field-hint { font-size: 0.75rem; color: var(--text-secondary); opacity: 0.7; }
 
 .field-select,
 .field-input {
@@ -351,5 +365,5 @@
 }
 
 .row-actions { display: flex; gap: 0.25rem; }
-.confirm-text { color: var(--text-secondary); line-height: 1.6; }
+.confirm-text { color: var(--text-secondary); line-height: 1.6; margin: 0; }
 </style>
