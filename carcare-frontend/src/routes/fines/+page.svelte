@@ -21,7 +21,6 @@
     { label: 'Автомобиль', key: '_car' },
     { label: 'Описание', key: 'description' },
     { label: 'Сумма (₽)', key: '_amount' },
-    { label: 'Статус', key: '_statusBadge' },
   ];
 
   let cars = $state<Car[]>([]);
@@ -193,7 +192,15 @@
             e.stopPropagation();
             const id = String(row.id ?? '');
             if (id) {
-              editFine(id, { status: row._statusBadge === 'paid' ? 'unpaid' : 'paid' })
+              const newStatus = row._statusBadge === 'paid' ? 'unpaid' : 'paid';
+              editFine(id, {
+                carId: String(row.carId ?? ''),
+                amount: Number(row.amount),
+                type: String(row.type ?? ''),
+                date: String(row.date ?? ''),
+                description: String(row.description ?? ''),
+                status: newStatus,
+              })
                 .then(() => toast = { open: true, message: 'Статус обновлён', type: 'success' })
                 .catch(() => toast = { open: true, message: 'Ошибка', type: 'error' });
             }
