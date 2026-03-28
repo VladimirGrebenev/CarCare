@@ -14,7 +14,7 @@ VALUES (
     'test@mail.ru',
     'Тест Пользователь',
     'user',
-    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy'
+    '$2a$10$O2gVwDW3T5UiqJyIazWwAeFFuVud0iwfntVx9sSmwWKHjYc3bcZEy'
 )
 ON CONFLICT (id) DO NOTHING;
 

@@ -20,6 +20,7 @@
     liters: number;
     price: number;
     fuelType?: string;
+    carId?: string;
   };
 
   type MaintenanceEvent = {
@@ -82,6 +83,24 @@
     fines_count: 0,
   });
 
+  // Car filter
+  let filterCarId = $state('');
+
+  // Tooltip state
+  let tooltip = $state({ visible: false, x: 0, y: 0, text: '' });
+
+  function showTooltip(e: MouseEvent, text: string) {
+    tooltip = { visible: true, x: e.clientX + 12, y: e.clientY - 8, text };
+  }
+  function moveTooltip(e: MouseEvent) {
+    if (tooltip.visible) {
+      tooltip = { ...tooltip, x: e.clientX + 12, y: e.clientY - 8 };
+    }
+  }
+  function hideTooltip() {
+    tooltip = { ...tooltip, visible: false };
+  }
+
   // View/Period state
   let fuelView = $state<ViewMode>('table');
   let fuelPeriod = $state<Period>('month');
@@ -104,16 +123,27 @@
     return Number(e.liters) * Number(e.price);
   }
 
+  // Filtered by car
+  const filteredFuelList = $derived(
+    filterCarId ? fuelList.filter(e => e.carId === filterCarId) : fuelList
+  );
+  const filteredMaintenanceList = $derived(
+    filterCarId ? maintenanceList.filter(e => e.carId === filterCarId) : maintenanceList
+  );
+  const filteredFinesList = $derived(
+    filterCarId ? finesList.filter(e => e.carId === filterCarId) : finesList
+  );
+
   const fuelTotal = $derived(
-    fuelList.reduce((sum, e) => sum + fuelCost(e), 0)
+    filteredFuelList.reduce((sum, e) => sum + fuelCost(e), 0)
   );
 
   const maintenanceTotal = $derived(
-    maintenanceList.reduce((sum, e) => sum + (Number(e.cost) || 0), 0)
+    filteredMaintenanceList.reduce((sum, e) => sum + (Number(e.cost) || 0), 0)
   );
 
   const finesTotal = $derived(
-    finesList.reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
+    filteredFinesList.reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
   );
 
   const grandTotal = $derived(fuelTotal + maintenanceTotal + finesTotal);
@@ -155,13 +185,13 @@
   }
 
   const fuelChartData = $derived(
-    groupByDay(fuelList, e => fuelCost(e), fuelPeriod, fuelDateFrom, fuelDateTo)
+    groupByDay(filteredFuelList, e => fuelCost(e), fuelPeriod, fuelDateFrom, fuelDateTo)
   );
   const maintenanceChartData = $derived(
-    groupByDay(maintenanceList, e => Number(e.cost) || 0, maintenancePeriod, maintenanceDateFrom, maintenanceDateTo)
+    groupByDay(filteredMaintenanceList, e => Number(e.cost) || 0, maintenancePeriod, maintenanceDateFrom, maintenanceDateTo)
   );
   const finesChartData = $derived(
-    groupByDay(finesList, e => Number(e.amount) || 0, finesPeriod, finesDateFrom, finesDateTo)
+    groupByDay(filteredFinesList, e => Number(e.amount) || 0, finesPeriod, finesDateFrom, finesDateTo)
   );
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -244,7 +274,8 @@
   {@const h = 200}
   {@const pad = 40}
   {@const barW = Math.max(2, (w - pad * 2) / data.length - 2)}
-  <div class="bar-chart-wrap">
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div class="bar-chart-wrap" onmousemove={moveTooltip}>
     <svg viewBox="0 0 {w} {h + pad}" class="bar-svg">
       {#each [0, 0.25, 0.5, 0.75, 1] as frac}
         {@const y = pad + (h - h * frac)}
@@ -257,7 +288,13 @@
         {@const x = pad + i * ((w - pad * 2) / data.length)}
         {@const barH = point.value > 0 ? Math.max(2, (point.value / maxVal) * h) : 0}
         {@const y = pad + h - barH}
-        <rect x={x} y={y} width={barW} height={barH} fill={color} rx="2" opacity="0.85"/>
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <rect
+          x={x} y={y} width={barW} height={barH} fill={color} rx="2" opacity="0.85"
+          style="cursor: pointer"
+          onmouseenter={(e) => showTooltip(e, `${point.day} — ${point.value.toLocaleString('ru-RU')} ₽`)}
+          onmouseleave={hideTooltip}
+        />
         {#if data.length <= 14}
           <text x={x + barW / 2} y={h + pad + 12} text-anchor="middle" font-size="9" fill="var(--text-secondary)">
             {point.day.slice(5)}
@@ -269,6 +306,31 @@
 {/snippet}
 
 <PageLayout title="Отчёты и статистика">
+  <!-- Tooltip -->
+  {#if tooltip.visible}
+    <div
+      class="chart-tooltip"
+      style="left:{tooltip.x}px; top:{tooltip.y}px"
+    >{tooltip.text}</div>
+  {/if}
+
+  <!-- Filter bar -->
+  <div class="report-filters">
+    <div class="filter-field">
+      <label class="filter-label" for="report-filter-car">Автомобиль</label>
+      <select
+        id="report-filter-car"
+        class="field-select-sm"
+        bind:value={filterCarId}
+      >
+        <option value="">Все автомобили</option>
+        {#each carsList as car}
+          <option value={car.id}>{car.brand} {car.model}{car.plate ? ` (${car.plate})` : ''}</option>
+        {/each}
+      </select>
+    </div>
+  </div>
+
   <!-- Tabs nav -->
   <div class="tabs-nav" role="tablist">
     {#each ([
@@ -308,17 +370,17 @@
           <div class="summary-card" style="--card-color: var(--accent);">
             <div class="summary-label">Топливо</div>
             <div class="summary-value">{fmt(fuelTotal)}</div>
-            <div class="summary-sub">{fuelList.length} заправок</div>
+            <div class="summary-sub">{filteredFuelList.length} заправок</div>
           </div>
           <div class="summary-card" style="--card-color: var(--success);">
             <div class="summary-label">ТО</div>
             <div class="summary-value">{fmt(maintenanceTotal)}</div>
-            <div class="summary-sub">{maintenanceList.length} записей</div>
+            <div class="summary-sub">{filteredMaintenanceList.length} записей</div>
           </div>
           <div class="summary-card" style="--card-color: var(--danger);">
             <div class="summary-label">Штрафы</div>
             <div class="summary-value">{fmt(finesTotal)}</div>
-            <div class="summary-sub">{finesList.length} штрафов</div>
+            <div class="summary-sub">{filteredFinesList.length} штрафов</div>
           </div>
         </div>
 
@@ -339,7 +401,8 @@
           {@const pieTotal = slices.reduce((s, sl) => s + sl.value, 0)}
           <div class="chart-section">
             <h3 class="section-title">Распределение расходов</h3>
-            <div class="pie-wrap">
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div class="pie-wrap" onmousemove={moveTooltip}>
               <svg viewBox="-1 -1 2 2" class="pie-svg" style="transform: rotate(-90deg)">
                 {#each slices as slice, i}
                   {@const startAngle = slices.slice(0, i).reduce((s, sl) => s + sl.value / pieTotal * Math.PI * 2, 0)}
@@ -349,11 +412,14 @@
                   {@const x2 = Math.cos(endAngle)}
                   {@const y2 = Math.sin(endAngle)}
                   {@const largeArc = slice.value / pieTotal > 0.5 ? 1 : 0}
+                  <!-- svelte-ignore a11y_no_static_element_interactions -->
                   <path
                     d="M 0 0 L {x1} {y1} A 1 1 0 {largeArc} 1 {x2} {y2} Z"
                     fill={slice.color}
                     opacity="0.9"
                     class="pie-slice"
+                    onmouseenter={(e) => showTooltip(e, `${slice.label} — ${slice.value.toLocaleString('ru-RU')} ₽ (${(slice.value / pieTotal * 100).toFixed(0)}%)`)}
+                    onmouseleave={hideTooltip}
                   />
                 {/each}
               </svg>
@@ -402,7 +468,7 @@
             </div>
           {/if}
         </div>
-        {#if fuelList.length === 0}
+        {#if filteredFuelList.length === 0}
           <EmptyState message="Нет данных о заправках." />
         {:else if fuelView === 'table'}
           <div class="table-wrap">
@@ -417,7 +483,7 @@
                 </tr>
               </thead>
               <tbody>
-                {#each fuelList as e}
+                {#each filteredFuelList as e}
                   <tr>
                     <td>{fmtDate(e.date)}</td>
                     <td>{FUEL_TYPE_LABELS[e.fuelType ?? ''] ?? e.fuelType ?? '—'}</td>
@@ -466,7 +532,7 @@
             </div>
           {/if}
         </div>
-        {#if maintenanceList.length === 0}
+        {#if filteredMaintenanceList.length === 0}
           <EmptyState message="Нет данных о техобслуживании." />
         {:else if maintenanceView === 'table'}
           <div class="table-wrap">
@@ -480,7 +546,7 @@
                 </tr>
               </thead>
               <tbody>
-                {#each maintenanceList as e}
+                {#each filteredMaintenanceList as e}
                   <tr>
                     <td>{fmtDate(e.date)}</td>
                     <td>{getCarLabel(String(e.carId ?? ''))}</td>
@@ -528,7 +594,7 @@
             </div>
           {/if}
         </div>
-        {#if finesList.length === 0}
+        {#if filteredFinesList.length === 0}
           <EmptyState message="Нет данных о штрафах." />
         {:else if finesView === 'table'}
           <div class="table-wrap">
@@ -543,7 +609,7 @@
                 </tr>
               </thead>
               <tbody>
-                {#each finesList as e}
+                {#each filteredFinesList as e}
                   <tr>
                     <td>{fmtDate(e.date)}</td>
                     <td>{getCarLabel(String(e.carId ?? ''))}</td>
@@ -575,6 +641,48 @@
 </PageLayout>
 
 <style>
+/* ── Tooltip ─────────────────────────────────────────────────────────────── */
+.chart-tooltip {
+  position: fixed;
+  background: var(--bg-overlay, var(--bg-layer));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 6px 10px;
+  font-size: 0.8125rem;
+  color: var(--text-primary);
+  pointer-events: none;
+  z-index: 1000;
+  white-space: nowrap;
+  box-shadow: var(--shadow-md, 0 4px 16px rgba(0,0,0,0.3));
+}
+
+/* ── Report filters ──────────────────────────────────────────────────────── */
+.report-filters {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+.filter-field { display: flex; flex-direction: column; gap: 0.375rem; }
+.filter-label { font-size: 0.8125rem; font-weight: 600; color: var(--text-secondary); }
+.field-select-sm {
+  padding: 0.4375rem 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-family: var(--font);
+  outline: none;
+  cursor: pointer;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.field-select-sm:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
 /* ── Tabs nav ────────────────────────────────────────────────────────────── */
 .tabs-nav {
   display: flex;

@@ -76,17 +76,59 @@
 
   let filterStatus = $state('');
   let filterSearch = $state('');
+  let filterCarId = $state('');
+
+  // Pagination state
+  let page = $state(1);
+  let perPage = $state(25);
+  const PER_PAGE_OPTIONS = [10, 25, 100];
 
   let displayRows = $derived(
     rows.filter(r => {
       const matchStatus = !filterStatus || r._statusBadge === filterStatus;
+      const matchCar = !filterCarId || String(r.carId ?? '') === filterCarId;
       const search = filterSearch.toLowerCase();
       const matchSearch = !search ||
         String(r.description ?? '').toLowerCase().includes(search) ||
         String(r._car ?? '').toLowerCase().includes(search);
-      return matchStatus && matchSearch;
+      return matchStatus && matchCar && matchSearch;
     })
   );
+
+  // Pagination derived values
+  let totalPages = $derived(Math.ceil(displayRows.length / perPage));
+  let showPagination = $derived(displayRows.length > 10);
+  let pagedRows = $derived(displayRows.slice((page - 1) * perPage, page * perPage));
+
+  let pageNumbers = $derived((() => {
+    if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const nums: (number | '...')[] = [];
+    if (page <= 3) {
+      nums.push(1, 2, 3, 4, '...', totalPages);
+    } else if (page >= totalPages - 2) {
+      nums.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+    } else {
+      nums.push(1, '...', page - 1, page, page + 1, '...', totalPages);
+    }
+    return nums;
+  })());
+
+  function setPage(p: number) {
+    page = Math.max(1, Math.min(p, totalPages));
+  }
+
+  function setPerPage(value: number) {
+    perPage = value;
+    page = 1;
+  }
+
+  // Reset page when filters change
+  $effect(() => {
+    void filterStatus;
+    void filterSearch;
+    void filterCarId;
+    page = 1;
+  });
 
   function openAdd() {
     editingId = null;
@@ -170,6 +212,19 @@
         bind:value={filterSearch}
       />
       <div class="filter-field">
+        <label class="filter-label" for="fines-filter-car">Автомобиль</label>
+        <select
+          id="fines-filter-car"
+          class="field-select"
+          bind:value={filterCarId}
+        >
+          <option value="">Все автомобили</option>
+          {#each cars as car}
+            <option value={car.id}>{car.brand} {car.model} ({car.plate})</option>
+          {/each}
+        </select>
+      </div>
+      <div class="filter-field">
         <label class="filter-label" for="fines-filter-status">Статус</label>
         <select
           id="fines-filter-status"
@@ -187,7 +242,7 @@
 
   <Table
     columns={COLUMNS}
-    rows={displayRows}
+    rows={pagedRows}
     loading={$finesLoading}
     error={$finesError ?? ''}
     emptyText="Нет записей о штрафах"
@@ -229,6 +284,38 @@
       </div>
     {/snippet}
   </Table>
+
+  {#if showPagination}
+    <div class="pagination-bar">
+      <span class="pagination-info">
+        Показано {Math.min((page - 1) * perPage + 1, displayRows.length)}–{Math.min(page * perPage, displayRows.length)} из {displayRows.length}
+      </span>
+      <div class="per-page-group">
+        {#each PER_PAGE_OPTIONS as opt}
+          <button
+            class="page-btn"
+            class:active={perPage === opt}
+            onclick={() => setPerPage(opt)}
+          >{opt}</button>
+        {/each}
+      </div>
+      <div class="page-nav">
+        <button class="page-btn nav-btn" disabled={page === 1} onclick={() => setPage(page - 1)}>←</button>
+        {#each pageNumbers as p}
+          {#if p === '...'}
+            <span class="page-ellipsis">…</span>
+          {:else}
+            <button
+              class="page-btn"
+              class:active={page === p}
+              onclick={() => setPage(p as number)}
+            >{p}</button>
+          {/if}
+        {/each}
+        <button class="page-btn nav-btn" disabled={page === totalPages} onclick={() => setPage(page + 1)}>→</button>
+      </div>
+    </div>
+  {/if}
 
   <Modal
     open={showModal}
@@ -304,6 +391,7 @@
 .filters { display: flex; gap: 0.75rem; flex: 1; flex-wrap: wrap; align-items: flex-end; }
 
 .filter-field { display: flex; flex-direction: column; gap: 0.375rem; }
+.filter-label { font-size: 0.8125rem; font-weight: 600; color: var(--text-secondary); }
 
 .form-grid {
   display: grid;
@@ -380,4 +468,62 @@
 }
 .edit-btn:hover { background: var(--accent-light); color: var(--accent-text); border-color: rgba(0,120,212,0.4); }
 .delete-btn:hover { background: var(--danger-light); color: var(--danger); border-color: var(--danger); }
+
+/* Pagination */
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.pagination-info {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.per-page-group,
+.page-nav {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.page-btn {
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+.page-btn:hover:not(:disabled):not(.active) {
+  background: var(--bg-layer);
+  color: var(--text-primary);
+}
+.page-btn.active {
+  background: var(--accent-light);
+  color: var(--accent-text);
+  border-color: rgba(0, 120, 212, 0.4);
+  font-weight: 600;
+}
+.page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.nav-btn { font-size: 1rem; }
+.page-ellipsis {
+  padding: 0 0.25rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 2rem;
+}
 </style>
