@@ -23,7 +23,7 @@
 
 <button
   {type}
-  class="btn btn-{variant} {className}"
+  class="btn btn-{variant} spotlight {className}"
   disabled={disabled || loading}
   aria-busy={loading}
   {onclick}
@@ -55,13 +55,16 @@
 }
 
 .btn-primary {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
+  background: rgba(0, 120, 212, 0.15);
+  border: 1px solid rgba(0, 120, 212, 0.5);
+  color: var(--accent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 .btn-primary:hover:not(:disabled) {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
+  background: rgba(0, 120, 212, 0.25);
+  border-color: rgba(0, 120, 212, 0.8);
+  color: #fff;
   box-shadow: var(--shadow-sm);
 }
 
@@ -106,6 +109,9 @@
   align-items: center;
   font-size: 1em;
 }
+
+/* содержимое кнопки поверх spotlight */
+.btn > * { position: relative; z-index: 1; }
 
 .btn-spinner {
   width: 1em;

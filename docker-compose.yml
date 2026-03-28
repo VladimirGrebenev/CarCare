@@ -1,4 +1,4 @@
-version: "3.8"
+version: "3"
 
 services:
   backend:
@@ -14,17 +14,16 @@ services:
     ports:
       - "8080:8080"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health" ]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
-      timeout: 3s
-      retries: 3
-      start_period: 40s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
     restart: unless-stopped
     networks:
       - carcare
     depends_on:
-      db:
-        condition: service_healthy
+      - db
     user: "1000:1000"
     security_opt:
       - no-new-privileges:true
@@ -36,11 +35,6 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 512M
 
   db:
     image: postgres:15
@@ -68,11 +62,6 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 512M
 
   frontend:
     build:
@@ -80,8 +69,6 @@ services:
       dockerfile: Dockerfile
     image: carcare-frontend:dev
     container_name: carcare-frontend
-    env_file:
-      - ./carcare-frontend/.env
     ports:
       - "3000:80"
     read_only: false
@@ -94,27 +81,17 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 256M
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost || exit 1" ]
+      test: ["CMD-SHELL", "curl -f http://localhost || exit 1"]
       interval: 30s
-      timeout: 3s
+      timeout: 5s
       retries: 3
       start_period: 40s
-    # volumes:
-    #   - ./carcare-frontend:/app
     restart: unless-stopped
     networks:
       - carcare
     depends_on:
-      backend:
-        condition: service_healthy
-      db:
-        condition: service_healthy
+      - backend
 
 networks:
   carcare:

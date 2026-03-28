@@ -6,7 +6,6 @@
   import Loader from '../../components/ui/Loader.svelte';
   import ErrorState from '../../components/ui/ErrorState.svelte';
   import EmptyState from '../../components/ui/EmptyState.svelte';
-  import FAB from '../../components/ui/FAB.svelte';
   import Modal from '../../components/ui/Modal.svelte';
   import Input from '../../components/ui/Input.svelte';
   import Button from '../../components/ui/Button.svelte';
@@ -143,6 +142,10 @@
 </script>
 
 <PageLayout title="Мои автомобили">
+  <div class="page-toolbar">
+    <Button variant="primary" onclick={openAdd}>+ Добавить авто</Button>
+  </div>
+
   {#if loading}
     <Loader size={40} />
   {:else if error}
@@ -183,10 +186,6 @@
     </div>
   {/if}
 </PageLayout>
-
-<FAB label="Добавить авто" onClick={openAdd} position="fixed">
-  {#snippet icon()}+{/snippet}
-</FAB>
 
 <!-- Модальное окно добавления/редактирования -->
 <Modal
@@ -233,6 +232,12 @@
 </Modal>
 
 <style>
+.page-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1.25rem;
+}
+
 .cars-list {
   display: flex;
   flex-direction: column;
