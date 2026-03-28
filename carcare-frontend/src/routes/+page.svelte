@@ -3,7 +3,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { authToken, bootstrapAuth } from '../stores/auth';
+  import { bootstrapAuth } from '../stores/auth';
   import { fetchFuelHistory } from '../lib/api';
   import Card from '../components/ui/Card.svelte';
 

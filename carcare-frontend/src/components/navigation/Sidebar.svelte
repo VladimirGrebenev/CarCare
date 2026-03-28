@@ -85,6 +85,7 @@
   }
 </script>
 
+<!-- eslint-disable svelte/no-at-html-tags -->
 <aside class="sidebar" class:collapsed aria-label="Боковая навигация">
   <!-- Brand row -->
   <div class="sidebar-brand">

@@ -21,7 +21,7 @@ function createTheme() {
     toggle() {
       const next: Theme = current === 'dark' ? 'light' : 'dark';
       apply(next);
-      try { localStorage.setItem(STORAGE_KEY, next); } catch {}
+      try { localStorage.setItem(STORAGE_KEY, next); } catch (_) { /* storage unavailable */ }
     },
     init() {
       if (typeof localStorage === 'undefined') return;

@@ -8,7 +8,7 @@
   import Input from '../../components/ui/Input.svelte';
   import Toast from '../../components/ui/Toast.svelte';
   import {
-    finesLoading, finesError, finesFilters,
+    finesLoading, finesError,
     filteredFinesList, loadFines, createFine, editFine, removeFine
   } from '../../stores/fines';
   import type { Fine } from '../../lib/types';

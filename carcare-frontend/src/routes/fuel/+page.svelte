@@ -32,7 +32,7 @@
   ];
 
   let cars = $state<Car[]>([]);
-  let carsLoading = $state(false);
+  let _carsLoading = $state(false);
 
   let showModal = $state(false);
   let editingId = $state<string | null>(null);
@@ -159,14 +159,14 @@
   }
 
   async function loadCars() {
-    carsLoading = true;
+    _carsLoading = true;
     try {
       const result = await fetchCars();
       cars = Array.isArray(result) ? result : [];
     } catch {
       cars = [];
     } finally {
-      carsLoading = false;
+      _carsLoading = false;
     }
   }
 
