@@ -28,6 +28,7 @@ password: test@carcare
 - Vitest 4.x (unit/integration)
 - Playwright (e2e)
 - @sveltejs/vite-plugin-svelte
+- Go 1.23
 
 ## Docker Compose v1 (Linux)
 - Для окружений с `docker-compose 1.29.2` используйте безопасный сценарий пересоздания:
