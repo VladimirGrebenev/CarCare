@@ -2,6 +2,11 @@
 
 CARCARE — современное веб- и мобильное приложение для учёта расходов, заправок, техобслуживания и штрафов для частных автолюбителей.
 
+## Тестовый аккаунт:
+https://carcare.veneberg81.ru/welcome
+login: test@mail.ru
+password: test@carcare
+
 ## Первый запуск: быстрый старт
 1. **Откройте приложение** — при первом запуске появится welcome-экран с кратким описанием возможностей.
 2. **Зарегистрируйтесь** — выберите регистрацию по email или через Яндекс/Google. Введите email и пароль, следуйте подсказкам.
@@ -24,8 +29,18 @@ CARCARE — современное веб- и мобильное приложе�
 - Playwright (e2e)
 - @sveltejs/vite-plugin-svelte
 
-## Docker Compose v1 (Linux)
-- Для окружений с `docker-compose 1.29.2` используйте безопасный сценарий пересоздания:
-	- `sudo chmod +x ./scripts/compose-v1-safe-up.sh`
-	- `sudo ./scripts/compose-v1-safe-up.sh`
-- Скрипт очищает устаревшие контейнеры проекта и поднимает `backend/db/frontend` с `--force-recreate`, что обходит периодический `KeyError: 'ContainerConfig'` при `recreate` в Compose v1.
+## Деплой
+
+Требования: Docker, Docker Compose v2, Git
+
+Первый запуск:
+```bash
+git clone https://github.com/VladimirGrebenev/CarCare.git
+cd CarCare
+./deploy.sh
+```
+
+Обновление:
+```bash
+./deploy.sh
+```
