@@ -40,12 +40,14 @@ func main() {
 	fineHandler := rest.NewFineHandler(uc)
 	reportHandler := rest.NewReportHandler(uc)
 	authHandler := rest.NewAuthHandler(authUC)
+	chatHandler := rest.NewChatHandler()
 
 	// Публичные маршруты — без аутентификации
 	http.HandleFunc("/health", rest.HealthCheckHandler)
 	http.HandleFunc("/api/auth/login", authHandler.Login)
 	http.HandleFunc("/api/auth/register", authHandler.Register)
 	http.HandleFunc("/api/auth/oauth/", authHandler.OAuthProvider)
+	http.Handle("/api/ai/chat", chatHandler)
 
 	// Защищённые маршруты — требуют валидный JWT
 	http.Handle("/cars", rest.AuthMiddleware(carHandler))
