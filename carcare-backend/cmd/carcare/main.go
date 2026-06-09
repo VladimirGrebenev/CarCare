@@ -40,7 +40,7 @@ func main() {
 	fineHandler := rest.NewFineHandler(uc)
 	reportHandler := rest.NewReportHandler(uc)
 	authHandler := rest.NewAuthHandler(authUC)
-	chatHandler := rest.NewChatHandler()
+	chatHandler := rest.NewChatHandler(uc)
 
 	// Публичные маршруты — без аутентификации
 	http.HandleFunc("/health", rest.HealthCheckHandler)
