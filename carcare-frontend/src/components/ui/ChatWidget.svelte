@@ -11,9 +11,29 @@
   let inputText = $state('');
   let isLoading = $state(false);
   let chatContainer = $state<HTMLDivElement | null>(null);
+  let isAuthenticated = $state(false);
+
+  onMount(() => {
+    const token = localStorage.getItem('authToken');
+    isAuthenticated = !!token;
+  });
+
+  function getAuthHeaders(): Record<string, string> {
+    const token = localStorage.getItem('authToken');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
 
   // Приветственное сообщение при первом открытии
   function openChat() {
+    if (!isAuthenticated) {
+      messages = [{
+        role: 'assistant',
+        text: '🔒 Пожалуйста, войдите в аккаунт, чтобы использовать чат с AI-помощником.'
+      }];
+      isOpen = true;
+      return;
+    }
+
     if (messages.length === 0) {
       messages = [{
         role: 'assistant',
@@ -34,9 +54,20 @@
     try {
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
         body: JSON.stringify({ message: text })
       });
+
+      if (res.status === 401) {
+        messages = [...messages, {
+          role: 'assistant',
+          text: '🔒 Сессия истекла. Пожалуйста, войдите в аккаунт снова.'
+        }];
+        return;
+      }
 
       if (!res.ok) throw new Error('Network error');
 
@@ -124,11 +155,11 @@
         class="chat-input"
         bind:value={inputText}
         onkeydown={handleKeydown}
-        placeholder="Напишите сообщение..."
+        placeholder={isAuthenticated ? "Напишите сообщение..." : "Войдите в аккаунт для доступа к чату"}
         rows="1"
-        disabled={isLoading}
+        disabled={!isAuthenticated || isLoading}
       ></textarea>
-      <button class="chat-send" onclick={sendMessage} disabled={!inputText.trim() || isLoading} aria-label="Отправить">
+      <button class="chat-send" onclick={sendMessage} disabled={!inputText.trim() || !isAuthenticated || isLoading} aria-label="Отправить">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
         </svg>
