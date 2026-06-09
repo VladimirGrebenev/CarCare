@@ -2,7 +2,9 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/VladimirGrebenev/CarCare-backend/internal/domain/car"
 	"github.com/VladimirGrebenev/CarCare-backend/internal/domain/fine"
@@ -10,11 +12,6 @@ import (
 	"github.com/VladimirGrebenev/CarCare-backend/internal/domain/maintenance"
 	"github.com/VladimirGrebenev/CarCare-backend/internal/domain/user"
 	"golang.org/x/crypto/bcrypt"
-)
-
-import (
-	"database/sql"
-	"fmt"
 )
 
 type CarRepository struct {
@@ -123,7 +120,6 @@ func (r *UserRepository) Create(ctx context.Context, u *user.User) error {
 		}
 		return err
 	}
-	// Сохраним хеш обратно в объект, чтобы caller получил актуальное значение
 	u.PasswordHash = string(hashed)
 	return nil
 }
