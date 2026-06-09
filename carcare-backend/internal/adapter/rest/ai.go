@@ -54,8 +54,8 @@ type yandexGPTResponse struct {
 	} `json:"result"`
 }
 
-// systemPrompt — инструкция для AI на основе документации
-const systemPrompt = "Ты — AI-помощник приложения CarCare. Приложение для учёта расходов на автомобиль.\n\nТвои задачи:\n1. Отвечать на вопросы пользователей о том, как пользоваться приложением.\n2. Создавать сущности (автомобили, заправки, ТО, штрафы) по текстовому описанию пользователя.\n\nПравила:\n- Отвечай на том же языке, на котором задан вопрос.\n- Если данных не хватает — задавай уточняющие вопросы по одному за раз.\n- Будь дружелюбным и полезным.\n\nВАЖНО: Если пользователь просит создать сущность, ты ДОЛЖЕН вернуть JSON-блок с действием в конце своего ответа.\nФормат JSON-блока:\n{\"action\": \"create_car\", \"data\": {\"brand\": \"...\", \"model\": \"...\", \"year\": 2024}}\n\nДоступные действия и их поля:\n\n1. create_car — создать автомобиль\n   Поля: brand (обяз), model (обяз), year (обяз, число), vin (опц), plate (опц)\n\n2. create_fuel — создать заправку\n   Поля: car_id (обяз), volume (обяз, число), price (обяз, число), type (обяз: АИ-92/АИ-95/АИ-98/Дизель/Газ), date (обяз, формат ГГГГ-ММ-ДД)\n\n3. create_maintenance — создать ТО\n   Поля: car_id (обяз), type (обяз: Замена масла/Замена шин/Техосмотр/Ремонт/Страховка/Другое), date (обяз, формат ГГГГ-ММ-ДД), cost (обяз, число), description (опц)\n\n4. create_fine — создать штраф\n   Поля: car_id (обяз), amount (обяз, число), type (обяз), date (обяз, формат ГГГГ-ММ-ДД), status (опц: paid/unpaid), description (опц)\n\nПример ответа с созданием авто:\n\"Отлично! Добавляю автомобиль Toyota Camry 2020.\n{\"action\": \"create_car\", \"data\": {\"brand\": \"Toyota\", \"model\": \"Camry\", \"year\": 2020}}\"\n\nЕсли пользователь не указал автомобиль (car_id), спроси какой автомобиль.\nЕсли пользователь не указал обязательные поля — задай уточняющий вопрос.\n\nИнформация о приложении:\n- Типы топлива: АИ-92, АИ-95, АИ-98, Дизель, Газ\n- Типы ТО: Замена масла, Замена шин, Техосмотр, Ремонт, Страховка, Другое\n- Статус штрафа: unpaid (не оплачен), paid (оплачен)"
+// systemPrompt — инструкция для AI
+const systemPrompt = "Ты — AI-помощник приложения CarCare для учёта расходов на автомобиль.\n\nТвои задачи:\n1. Отвечать на вопросы пользователей о том, как пользоваться приложением.\n2. Создавать, редактировать и удалять сущности (автомобили, заправки, ТО, штрафы).\n\nВАЖНЫЕ ПРАВИЛА:\n- НИКОГДА не создавай сущность, пока не собраны ВСЕ обязательные поля.\n- Если данных не хватает — задавай уточняющие вопросы по одному за раз.\n- НЕ используй ID из базы данных. Спрашивай понятными пользователю названиями.\n- Для привязки к автомобилю спрашивай марку, модель и госномер.\n- Для удаления — сначала уточни, какую именно запись удалить, и подтверди у пользователя.\n\nОбязательные поля для создания:\n\n1. АВТОМОБИЛЬ (create_car): brand, model, year, vin, plate\n2. ЗАПРАВКА (create_fuel): автомобиль, volume, price, type, date\n3. ТЕХОБСЛУЖИВАНИЕ (create_maintenance): автомобиль, type, date, cost\n4. ШТРАФ (create_fine): автомобиль, amount, type, date\n\nДоступные действия (JSON в конце ответа):\n\nСоздание:\n{\"action\": \"create_car\", \"data\": {\"brand\": \"...\", \"model\": \"...\", \"year\": 2024, \"vin\": \"...\", \"plate\": \"...\"}}\n{\"action\": \"create_fuel\", \"data\": {\"car_brand\": \"...\", \"car_model\": \"...\", \"car_plate\": \"...\", \"volume\": 45, \"price\": 55, \"type\": \"АИ-95\", \"date\": \"2026-06-09\"}}\n{\"action\": \"create_maintenance\", \"data\": {\"car_brand\": \"...\", \"car_model\": \"...\", \"car_plate\": \"...\", \"type\": \"Замена масла\", \"date\": \"2026-06-09\", \"cost\": 5000}}\n{\"action\": \"create_fine\", \"data\": {\"car_brand\": \"...\", \"car_model\": \"...\", \"car_plate\": \"...\", \"amount\": 500, \"type\": \"12.9 КоАП\", \"date\": \"2026-06-09\"}}\n\nРедактирование (только поля, которые нужно изменить):\n{\"action\": \"update_car\", \"data\": {\"car_brand\": \"...\", \"car_model\": \"...\", \"car_plate\": \"...\", \"new_plate\": \"...\", \"new_vin\": \"...\"}}\n{\"action\": \"update_fuel\", \"data\": {\"car_brand\": \"...\", \"car_model\": \"...\", \"car_plate\": \"...\", \"date\": \"2026-06-09\", \"new_volume\": 50}}\n{\"action\": \"update_maintenance\", \"data\": {\"car_brand\": \"...\", \"car_model\": \"...\", \"car_plate\": \"...\", \"type\": \"Замена масла\", \"date\": \"2026-06-09\", \"new_cost\": 6000}}\n{\"action\": \"update_fine\", \"data\": {\"car_brand\": \"...\", \"car_model\": \"...\", \"car_plate\": \"...\", \"amount\": 500, \"date\": \"2026-06-09\", \"new_status\": \"paid\"}}\n\nУдаление (только после подтверждения пользователем):\n{\"action\": \"delete_car\", \"data\": {\"car_brand\": \"...\", \"car_model\": \"...\", \"car_plate\": \"...\"}}\n{\"action\": \"delete_fuel\", \"data\": {\"car_brand\": \"...\", \"car_model\": \"...\", \"car_plate\": \"...\", \"date\": \"2026-06-09\", \"volume\": 45}}\n{\"action\": \"delete_maintenance\", \"data\": {\"car_brand\": \"...\", \"car_model\": \"...\", \"car_plate\": \"...\", \"type\": \"Замена масла\", \"date\": \"2026-06-09\"}}\n{\"action\": \"delete_fine\", \"data\": {\"car_brand\": \"...\", \"car_model\": \"...\", \"car_plate\": \"...\", \"amount\": 500, \"date\": \"2026-06-09\"}}"
 
 // AIAction — структура действия из JSON
 type AIAction struct {
@@ -125,10 +125,9 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // tryExecuteAction ищет JSON-блок с действием в ответе AI и выполняет его
 func (h *ChatHandler) tryExecuteAction(response string, userID string) string {
-	// Ищем JSON-блок в ответе
 	start := strings.Index(response, "{\"action\":")
 	if start == -1 {
-		return "" // нет действия
+		return ""
 	}
 	end := strings.LastIndex(response, "}")
 	if end == -1 || end < start {
@@ -141,7 +140,6 @@ func (h *ChatHandler) tryExecuteAction(response string, userID string) string {
 		return ""
 	}
 
-	// Выполняем действие
 	switch action.Action {
 	case "create_car":
 		return h.executeCreateCar(action.Data, userID)
@@ -151,6 +149,22 @@ func (h *ChatHandler) tryExecuteAction(response string, userID string) string {
 		return h.executeCreateMaintenance(action.Data, userID)
 	case "create_fine":
 		return h.executeCreateFine(action.Data, userID)
+	case "update_car":
+		return h.executeUpdateCar(action.Data, userID)
+	case "update_fuel":
+		return h.executeUpdateFuel(action.Data, userID)
+	case "update_maintenance":
+		return h.executeUpdateMaintenance(action.Data, userID)
+	case "update_fine":
+		return h.executeUpdateFine(action.Data, userID)
+	case "delete_car":
+		return h.executeDeleteCar(action.Data, userID)
+	case "delete_fuel":
+		return h.executeDeleteFuel(action.Data, userID)
+	case "delete_maintenance":
+		return h.executeDeleteMaintenance(action.Data, userID)
+	case "delete_fine":
+		return h.executeDeleteFine(action.Data, userID)
 	default:
 		return ""
 	}
@@ -189,71 +203,140 @@ func getInt(data map[string]interface{}, key string) int {
 	return 0
 }
 
+// findCarByDetails ищет автомобиль пользователя по марке, модели и госномеру
+func (h *ChatHandler) findCarByDetails(data map[string]interface{}, userID string) (string, string) {
+	brand := getString(data, "car_brand")
+	model := getString(data, "car_model")
+	plate := getString(data, "car_plate")
+
+	cars, err := h.uc.Car.ListCars(userID)
+	if err != nil {
+		return "", ""
+	}
+
+	for _, c := range cars {
+		if brand != "" && !strings.EqualFold(c.Brand, brand) {
+			continue
+		}
+		if model != "" && !strings.EqualFold(c.Model, model) {
+			continue
+		}
+		if plate != "" && !strings.EqualFold(c.Plate, plate) {
+			continue
+		}
+		if brand == "" && model == "" && plate == "" {
+			continue
+		}
+		return c.ID, fmt.Sprintf("%s %s (%s)", c.Brand, c.Model, c.Plate)
+	}
+	return "", ""
+}
+
+// ========== CREATE ==========
+
 func (h *ChatHandler) executeCreateCar(data map[string]interface{}, userID string) string {
+	brand := getString(data, "brand")
+	model := getString(data, "model")
+	year := getInt(data, "year")
+	vin := getString(data, "vin")
+	plate := getString(data, "plate")
+
+	missingFields := []string{}
+	if brand == "" {
+		missingFields = append(missingFields, "марку")
+	}
+	if model == "" {
+		missingFields = append(missingFields, "модель")
+	}
+	if year <= 0 {
+		missingFields = append(missingFields, "год выпуска")
+	}
+	if vin == "" {
+		missingFields = append(missingFields, "VIN-номер")
+	}
+	if plate == "" {
+		missingFields = append(missingFields, "госномер")
+	}
+
+	if len(missingFields) > 0 {
+		return fmt.Sprintf("❌ Не хватает данных: %s. Пожалуйста, укажите все данные для создания автомобиля.", strings.Join(missingFields, ", "))
+	}
+
 	c := car.Car{
 		ID:     uuid.New().String(),
 		UserID: userID,
-		Brand:  getString(data, "brand"),
-		Model:  getString(data, "model"),
-		Year:   getInt(data, "year"),
-		VIN:    getString(data, "vin"),
-		Plate:  getString(data, "plate"),
-	}
-
-	if c.Brand == "" || c.Model == "" {
-		return "❌ Не указаны марка или модель автомобиля. Пожалуйста, укажите их."
+		Brand:  brand,
+		Model:  model,
+		Year:   year,
+		VIN:    vin,
+		Plate:  plate,
 	}
 
 	if err := h.uc.Car.AddCar(c); err != nil {
 		return fmt.Sprintf("❌ Ошибка при создании автомобиля: %s", err.Error())
 	}
 
-	return fmt.Sprintf("✅ Автомобиль **%s %s** (%d) успешно добавлен! 🚗", c.Brand, c.Model, c.Year)
+	return fmt.Sprintf("✅ Автомобиль **%s %s** (%d) успешно добавлен! 🚗\nГосномер: %s\nVIN: %s", brand, model, year, plate, vin)
 }
 
 func (h *ChatHandler) executeCreateFuel(data map[string]interface{}, userID string) string {
+	carID, carName := h.findCarByDetails(data, userID)
+	if carID == "" {
+		return "❌ Не удалось найти автомобиль. Укажите марку, модель и госномер автомобиля."
+	}
+
 	e := fuel.FuelEvent{
 		ID:     uuid.New().String(),
-		CarID:  getString(data, "car_id"),
+		CarID:  carID,
 		Volume: getFloat(data, "volume"),
 		Price:  getFloat(data, "price"),
 		Type:   getString(data, "type"),
 		Date:   getString(data, "date"),
 	}
 
-	if e.CarID == "" || e.Volume <= 0 || e.Price <= 0 || e.Type == "" || e.Date == "" {
-		return "❌ Не хватает данных для создания заправки. Укажите автомобиль, объём, цену, тип топлива и дату."
+	if e.Volume <= 0 || e.Price <= 0 || e.Type == "" || e.Date == "" {
+		return "❌ Не хватает данных для создания заправки. Укажите объём, цену, тип топлива и дату."
 	}
 
 	if err := h.uc.Fuel.AddFuelEvent(e); err != nil {
 		return fmt.Sprintf("❌ Ошибка при создании заправки: %s", err.Error())
 	}
 
-	return fmt.Sprintf("✅ Заправка добавлена: %.1f л %s по %.2f ₽/л на сумму %.2f ₽ 🛢️", e.Volume, e.Type, e.Price, e.Volume*e.Price)
+	return fmt.Sprintf("✅ Заправка добавлена для %s: %.1f л %s по %.2f ₽/л 🛢️", carName, e.Volume, e.Type, e.Price)
 }
 
 func (h *ChatHandler) executeCreateMaintenance(data map[string]interface{}, userID string) string {
+	carID, carName := h.findCarByDetails(data, userID)
+	if carID == "" {
+		return "❌ Не удалось найти автомобиль. Укажите марку, модель и госномер автомобиля."
+	}
+
 	e := maintenance.MaintenanceEvent{
 		ID:          uuid.New().String(),
-		CarID:       getString(data, "car_id"),
+		CarID:       carID,
 		Type:        getString(data, "type"),
 		Date:        getString(data, "date"),
 		Cost:        getFloat(data, "cost"),
 		Description: getString(data, "description"),
 	}
 
-	if e.CarID == "" || e.Type == "" || e.Date == "" || e.Cost <= 0 {
-		return "❌ Не хватает данных для создания ТО. Укажите автомобиль, тип работ, дату и стоимость."
+	if e.Type == "" || e.Date == "" || e.Cost <= 0 {
+		return "❌ Не хватает данных для создания ТО. Укажите тип работ, дату и стои��ость."
 	}
 
 	if err := h.uc.Maintenance.AddMaintenanceEvent(e); err != nil {
 		return fmt.Sprintf("❌ Ошибка при создании ТО: %s", err.Error())
 	}
 
-	return fmt.Sprintf("✅ Техобслуживание добавлено: %s на сумму %.2f ₽ 🔧", e.Type, e.Cost)
+	return fmt.Sprintf("✅ Техобслуживание добавлено для %s: %s на сумму %.2f ₽ 🔧", carName, e.Type, e.Cost)
 }
 
 func (h *ChatHandler) executeCreateFine(data map[string]interface{}, userID string) string {
+	carID, carName := h.findCarByDetails(data, userID)
+	if carID == "" {
+		return "❌ Не удалось найти автомобиль. Укажите марку, модель и госномер автомобиля."
+	}
+
 	status := getString(data, "status")
 	if status == "" {
 		status = "unpaid"
@@ -261,7 +344,7 @@ func (h *ChatHandler) executeCreateFine(data map[string]interface{}, userID stri
 
 	f := fine.Fine{
 		ID:          uuid.New().String(),
-		CarID:       getString(data, "car_id"),
+		CarID:       carID,
 		Amount:      getFloat(data, "amount"),
 		Type:        getString(data, "type"),
 		Date:        getString(data, "date"),
@@ -269,8 +352,8 @@ func (h *ChatHandler) executeCreateFine(data map[string]interface{}, userID stri
 		Description: getString(data, "description"),
 	}
 
-	if f.CarID == "" || f.Amount <= 0 || f.Type == "" || f.Date == "" {
-		return "❌ Не хватает данных для создания штрафа. Укажите автомобиль, сумму, статью и дату."
+	if f.Amount <= 0 || f.Type == "" || f.Date == "" {
+		return "❌ Не хватает данных для создания штрафа. Укажите сумму, статью и дату."
 	}
 
 	if err := h.uc.Fine.AddFine(f); err != nil {
@@ -282,7 +365,298 @@ func (h *ChatHandler) executeCreateFine(data map[string]interface{}, userID stri
 		statusText = "оплачен"
 	}
 
-	return fmt.Sprintf("✅ Штраф добавлен: %.2f ₽ по статье %s (статус: %s) 📋", f.Amount, f.Type, statusText)
+	return fmt.Sprintf("✅ Штраф добавлен для %s: %.2f ₽ по статье %s (статус: %s) 📋", carName, f.Amount, f.Type, statusText)
+}
+
+// ========== UPDATE ==========
+
+func (h *ChatHandler) executeUpdateCar(data map[string]interface{}, userID string) string {
+	carID, carName := h.findCarByDetails(data, userID)
+	if carID == "" {
+		return "❌ Не удалось найти автомобиль. Укажите марку, модель и госномер."
+	}
+
+	existingCar, err := h.uc.Car.GetCar(carID)
+	if err != nil {
+		return "❌ Автомобиль не найден."
+	}
+
+	if plate := getString(data, "new_plate"); plate != "" {
+		existingCar.Plate = plate
+	}
+	if vin := getString(data, "new_vin"); vin != "" {
+		existingCar.VIN = vin
+	}
+	if brand := getString(data, "new_brand"); brand != "" {
+		existingCar.Brand = brand
+	}
+	if model := getString(data, "new_model"); model != "" {
+		existingCar.Model = model
+	}
+	if year := getInt(data, "new_year"); year > 0 {
+		existingCar.Year = year
+	}
+
+	if err := h.uc.Car.UpdateCar(existingCar, userID); err != nil {
+		return fmt.Sprintf("❌ Ошибка при обновлении: %s", err.Error())
+	}
+
+	return fmt.Sprintf("✅ Автомобиль %s обновлён! 🚗", carName)
+}
+
+func (h *ChatHandler) executeUpdateFuel(data map[string]interface{}, userID string) string {
+	carID, carName := h.findCarByDetails(data, userID)
+	if carID == "" {
+		return "❌ Не удалось найти автомобиль."
+	}
+
+	// Ищем заправку по дате и автомобилю
+	events, err := h.uc.Fuel.ListFuelEvents(userID)
+	if err != nil {
+		return "❌ Ошибка при поиске заправки."
+	}
+
+	date := getString(data, "date")
+	volume := getFloat(data, "volume")
+
+	var found *fuel.FuelEvent
+	for _, e := range events {
+		if e.CarID == carID && e.Date == date {
+			if volume <= 0 || e.Volume == volume {
+				found = &e
+				break
+			}
+		}
+	}
+
+	if found == nil {
+		return "❌ Заправка не найдена. Уточните дату и объём."
+	}
+
+	if v := getFloat(data, "new_volume"); v > 0 {
+		found.Volume = v
+	}
+	if p := getFloat(data, "new_price"); p > 0 {
+		found.Price = p
+	}
+	if t := getString(data, "new_type"); t != "" {
+		found.Type = t
+	}
+	if d := getString(data, "new_date"); d != "" {
+		found.Date = d
+	}
+
+	if err := h.uc.Fuel.UpdateFuelEvent(*found); err != nil {
+		return fmt.Sprintf("❌ Ошибка при обновлении: %s", err.Error())
+	}
+
+	return fmt.Sprintf("✅ Заправка для %s обновлена! 🛢️", carName)
+}
+
+func (h *ChatHandler) executeUpdateMaintenance(data map[string]interface{}, userID string) string {
+	carID, carName := h.findCarByDetails(data, userID)
+	if carID == "" {
+		return "❌ Не удалось найти автомобиль."
+	}
+
+	events, err := h.uc.Maintenance.ListMaintenanceEvents(userID)
+	if err != nil {
+		return "❌ Ошибка при поиске ТО."
+	}
+
+	date := getString(data, "date")
+	mtype := getString(data, "type")
+
+	var found *maintenance.MaintenanceEvent
+	for _, e := range events {
+		if e.CarID == carID && e.Date == date && (mtype == "" || e.Type == mtype) {
+			found = &e
+			break
+		}
+	}
+
+	if found == nil {
+		return "❌ Запись ТО не найдена. Уточните дату и тип работ."
+	}
+
+	if c := getFloat(data, "new_cost"); c > 0 {
+		found.Cost = c
+	}
+	if t := getString(data, "new_type"); t != "" {
+		found.Type = t
+	}
+	if d := getString(data, "new_date"); d != "" {
+		found.Date = d
+	}
+	if desc := getString(data, "new_description"); desc != "" {
+		found.Description = desc
+	}
+
+	if err := h.uc.Maintenance.UpdateMaintenanceEvent(*found); err != nil {
+		return fmt.Sprintf("❌ Ошибка при обновлении: %s", err.Error())
+	}
+
+	return fmt.Sprintf("✅ Техобслуживание для %s обновлено! 🔧", carName)
+}
+
+func (h *ChatHandler) executeUpdateFine(data map[string]interface{}, userID string) string {
+	carID, carName := h.findCarByDetails(data, userID)
+	if carID == "" {
+		return "❌ Не удалось найти автомобиль."
+	}
+
+	fines, err := h.uc.Fine.ListFines(userID)
+	if err != nil {
+		return "❌ Ошибка при поиске штрафа."
+	}
+
+	date := getString(data, "date")
+	amount := getFloat(data, "amount")
+
+	var found *fine.Fine
+	for _, f := range fines {
+		if f.CarID == carID && f.Date == date && (amount <= 0 || f.Amount == amount) {
+			found = &f
+			break
+		}
+	}
+
+	if found == nil {
+		return "❌ Штраф не найден. Уточните дату и сумму."
+	}
+
+	if a := getFloat(data, "new_amount"); a > 0 {
+		found.Amount = a
+	}
+	if s := getString(data, "new_status"); s != "" {
+		found.Status = s
+	}
+	if t := getString(data, "new_type"); t != "" {
+		found.Type = t
+	}
+	if d := getString(data, "new_date"); d != "" {
+		found.Date = d
+	}
+
+	if err := h.uc.Fine.UpdateFine(*found); err != nil {
+		return fmt.Sprintf("❌ Ошибка при обновлении: %s", err.Error())
+	}
+
+	return fmt.Sprintf("✅ Штраф для %s обновлён! 📋", carName)
+}
+
+// ========== DELETE ==========
+
+func (h *ChatHandler) executeDeleteCar(data map[string]interface{}, userID string) string {
+	carID, carName := h.findCarByDetails(data, userID)
+	if carID == "" {
+		return "❌ Не удалось найти автомобиль. Укажите марку, модель и госномер."
+	}
+
+	if err := h.uc.Car.DeleteCar(carID, userID); err != nil {
+		return fmt.Sprintf("❌ Ошибка при удалении: %s", err.Error())
+	}
+
+	return fmt.Sprintf("✅ Автомобиль %s удалён. Все связанные заправки, ТО и штрафы также удалены. 🗑️", carName)
+}
+
+func (h *ChatHandler) executeDeleteFuel(data map[string]interface{}, userID string) string {
+	carID, carName := h.findCarByDetails(data, userID)
+	if carID == "" {
+		return "❌ Не удалось найти автомобиль."
+	}
+
+	events, err := h.uc.Fuel.ListFuelEvents(userID)
+	if err != nil {
+		return "❌ Ошибка при поиске заправки."
+	}
+
+	date := getString(data, "date")
+	volume := getFloat(data, "volume")
+
+	var found *fuel.FuelEvent
+	for _, e := range events {
+		if e.CarID == carID && e.Date == date && (volume <= 0 || e.Volume == volume) {
+			found = &e
+			break
+		}
+	}
+
+	if found == nil {
+		return "❌ Заправка не найдена. Уточните дату и объём."
+	}
+
+	if err := h.uc.Fuel.DeleteFuelEvent(found.ID); err != nil {
+		return fmt.Sprintf("❌ Ошибка при удалении: %s", err.Error())
+	}
+
+	return fmt.Sprintf("✅ Заправка для %s от %s удалена. 🗑️", carName, found.Date)
+}
+
+func (h *ChatHandler) executeDeleteMaintenance(data map[string]interface{}, userID string) string {
+	carID, carName := h.findCarByDetails(data, userID)
+	if carID == "" {
+		return "❌ Не удалось найти автомобиль."
+	}
+
+	events, err := h.uc.Maintenance.ListMaintenanceEvents(userID)
+	if err != nil {
+		return "❌ Ошибка при поиске ТО."
+	}
+
+	date := getString(data, "date")
+	mtype := getString(data, "type")
+
+	var found *maintenance.MaintenanceEvent
+	for _, e := range events {
+		if e.CarID == carID && e.Date == date && (mtype == "" || e.Type == mtype) {
+			found = &e
+			break
+		}
+	}
+
+	if found == nil {
+		return "❌ Запись ТО не найдена. Уточните дату и тип работ."
+	}
+
+	if err := h.uc.Maintenance.DeleteMaintenanceEvent(found.ID); err != nil {
+		return fmt.Sprintf("❌ Ошибка при удалении: %s", err.Error())
+	}
+
+	return fmt.Sprintf("✅ Техобслуживание для %s от %s удалено. 🗑️", carName, found.Date)
+}
+
+func (h *ChatHandler) executeDeleteFine(data map[string]interface{}, userID string) string {
+	carID, carName := h.findCarByDetails(data, userID)
+	if carID == "" {
+		return "❌ Не удалось найти автомобиль."
+	}
+
+	fines, err := h.uc.Fine.ListFines(userID)
+	if err != nil {
+		return "❌ Ошибка при поиске штрафа."
+	}
+
+	date := getString(data, "date")
+	amount := getFloat(data, "amount")
+
+	var found *fine.Fine
+	for _, f := range fines {
+		if f.CarID == carID && f.Date == date && (amount <= 0 || f.Amount == amount) {
+			found = &f
+			break
+		}
+	}
+
+	if found == nil {
+		return "❌ Штраф не найден. Уточните дату и сумму."
+	}
+
+	if err := h.uc.Fine.DeleteFine(found.ID); err != nil {
+		return fmt.Sprintf("❌ Ошибка при удалении: %s", err.Error())
+	}
+
+	return fmt.Sprintf("✅ Штраф для %s на %.2f ₽ удалён. 🗑️", carName, found.Amount)
 }
 
 func (h *ChatHandler) callYandexGPT(userMessage string) (string, error) {
@@ -338,21 +712,21 @@ func (h *ChatHandler) fallbackResponse(message string) string {
 
 	switch {
 	case strings.Contains(msg, "автомобил") || strings.Contains(msg, "машин") || strings.Contains(msg, "добавить авто"):
-		return "Чтобы добавить автомобиль, перейдите в раздел \"Мои автомобили\" и нажмите \"Добавить автомобиль\". Укажите марку, модель, год выпуска и при необходимости VIN и госномер. Если хотите, я могу помочь — просто напишите данные автомобиля текстом, например: \"Toyota Camry 2020\"."
+		return "Чтобы добавить автомобиль, перейдите в раздел \"Мои автомобили\" и нажмите \"Добавить автомобиль\". Укажите марку, модель, год выпуска, VIN и госномер."
 
 	case strings.Contains(msg, "заправк") || strings.Contains(msg, "топлив") || strings.Contains(msg, "бензин"):
-		return "Чтобы добавить заправку, перейдите в раздел \"Топливо\" и нажмите \"Добавить заправку\". Укажите дату, объём в литрах, тип топлива, цену и пробег. Если хотите, я могу помочь — просто напишите данные, например: \"Залил 45 литров АИ-95 по 55 рублей\"."
+		return "Чтобы добавить заправку, перейдите в раздел \"Топливо\" и нажмите \"Добавить заправку\". Укажите дату, объём в литрах, тип топлива, цену и пробег."
 
 	case strings.Contains(msg, "то ") || strings.Contains(msg, "техобслуж") || strings.Contains(msg, "ремонт"):
-		return "Чтобы добавить запись о техобслуживании, перейдите в раздел \"Техобслуживание\". Укажите дату, тип работ, пробег и стоимость. Типы работ: замена масла, замена шин, техосмотр, ремонт, страховка или другое."
+		return "Чтобы добавить запись о техобслуживании, перейдите в раздел \"Техобслуживание\". Укажите дату, тип работ, пробег и стоимость."
 
 	case strings.Contains(msg, "штраф"):
-		return "Чтобы добавить штраф, перейдите в раздел \"Штрафы\" и нажмите \"Добавить штраф\". Укажите дату, номер постановления, сумму и статью нарушения. Статус по умолчанию — \"не оплачен\"."
+		return "Чтобы добавить штраф, перейдите в раздел \"Штрафы\" и нажмите \"Добавить штраф\". Укажите дату, номер постановления, сумму и статью нарушения."
 
 	case strings.Contains(msg, "отчёт") || strings.Contains(msg, "статистик") || strings.Contains(msg, "расход"):
 		return "В разделе \"Отчёты\" вы можете увидеть сводку по всем расходам: топливо, ТО и штрафы. Доступны фильтры по периоду (день, неделя, месяц, год) и графики распределения расходов."
 
-	case strings.Contains(msg, "привет") || strings.Contains(msg, "здравствуй") || strings.Contains(msg, "здаров"):
+	case strings.Contains(msg, "��ривет") || strings.Contains(msg, "здравствуй") || strings.Contains(msg, "здаров"):
 		return "Привет! Я AI-помощник CarCare 👋 Я могу помочь с вопросами по приложению, а также создать автомобиль, заправку, ТО или штраф по вашему описанию. Что вас интересует?"
 
 	default:
