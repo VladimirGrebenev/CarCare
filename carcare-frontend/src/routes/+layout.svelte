@@ -4,6 +4,7 @@
   import { goto } from '$app/navigation';
   import NavBar from '../components/navigation/NavBar.svelte';
   import Sidebar from '../components/navigation/Sidebar.svelte';
+  import ChatWidget from '../components/ui/ChatWidget.svelte';
   import { theme } from '../lib/theme';
   import { initSpotlight } from '../lib/spotlight';
   import './+layout.css';
@@ -48,6 +49,9 @@
       {@render children()}
     </main>
   {/if}
+
+  <!-- AI-чат на всех страницах -->
+  <ChatWidget />
 </div>
 
 <style>
