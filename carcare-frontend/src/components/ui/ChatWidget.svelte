@@ -11,6 +11,7 @@
   let inputText = $state('');
   let isLoading = $state(false);
   let chatContainer = $state<HTMLDivElement | null>(null);
+  let inputRef = $state<HTMLTextAreaElement | null>(null);
   let isAuthenticated = $state(false);
 
   onMount(() => {
@@ -23,6 +24,12 @@
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
+  function focusInput() {
+    requestAnimationFrame(() => {
+      if (inputRef) inputRef.focus();
+    });
+  }
+
   function openChat() {
     if (!isAuthenticated) {
       messages = [{
@@ -30,6 +37,7 @@
         text: '🔒 Пожалуйста, войдите в аккаунт, чтобы использовать чат с AI-помощником.'
       }];
       isOpen = true;
+      focusInput();
       return;
     }
 
@@ -40,10 +48,7 @@
       }];
     }
     isOpen = true;
-    // Скролл вниз после открытия
-    requestAnimationFrame(() => {
-      if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
-    });
+    focusInput();
   }
 
   async function sendMessage() {
@@ -54,13 +59,11 @@
     inputText = '';
     isLoading = true;
 
-    // Скролл вниз после добавления сообщения пользователя
     requestAnimationFrame(() => {
       if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
     });
 
     try {
-      // Отправляем историю сообщений (кроме последнего — оно текущее)
       const history = messages.slice(0, -1).map(m => ({ role: m.role, text: m.text }));
 
       const res = await fetch('/api/ai/chat', {
@@ -91,10 +94,10 @@
       }];
     } finally {
       isLoading = false;
-      // Скролл вниз после получения ответа
       requestAnimationFrame(() => {
         if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
       });
+      focusInput();
     }
   }
 
@@ -105,7 +108,6 @@
     }
   }
 
-  // Автоскролл при изменении сообщений
   $effect(() => {
     if (chatContainer && messages.length > 0) {
       requestAnimationFrame(() => {
@@ -175,6 +177,7 @@
         placeholder={isAuthenticated ? "Напишите сообщение..." : "Войдите в аккаунт для доступа к чату"}
         rows="1"
         disabled={!isAuthenticated || isLoading}
+        bind:this={inputRef}
       ></textarea>
       <button class="chat-send" onclick={sendMessage} disabled={!inputText.trim() || !isAuthenticated || isLoading} aria-label="Отправить">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
