@@ -47,9 +47,9 @@ func main() {
 	http.HandleFunc("/api/auth/login", authHandler.Login)
 	http.HandleFunc("/api/auth/register", authHandler.Register)
 	http.HandleFunc("/api/auth/oauth/", authHandler.OAuthProvider)
-	http.Handle("/api/ai/chat", chatHandler)
 
 	// Защищённые маршруты — требуют валидный JWT
+	http.Handle("/api/ai/chat", rest.AuthMiddleware(chatHandler))
 	http.Handle("/cars", rest.AuthMiddleware(carHandler))
 	http.Handle("/cars/", rest.AuthMiddleware(carHandler))
 	http.Handle("/api/cars", rest.AuthMiddleware(rest.AliasPrefixHandler("/api", "", carHandler)))
