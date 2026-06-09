@@ -23,7 +23,6 @@
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
-  // Приветственное сообщение при первом открытии
   function openChat() {
     if (!isAuthenticated) {
       messages = [{
@@ -41,6 +40,10 @@
       }];
     }
     isOpen = true;
+    // Скролл вниз после открытия
+    requestAnimationFrame(() => {
+      if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
+    });
   }
 
   async function sendMessage() {
@@ -51,14 +54,22 @@
     inputText = '';
     isLoading = true;
 
+    // Скролл вниз после добавления сообщения пользователя
+    requestAnimationFrame(() => {
+      if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
+    });
+
     try {
+      // Отправляем историю сообщений (кроме последнего — оно текущее)
+      const history = messages.slice(0, -1).map(m => ({ role: m.role, text: m.text }));
+
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...getAuthHeaders()
         },
-        body: JSON.stringify({ message: text })
+        body: JSON.stringify({ message: text, history })
       });
 
       if (res.status === 401) {
@@ -80,6 +91,10 @@
       }];
     } finally {
       isLoading = false;
+      // Скролл вниз после получения ответа
+      requestAnimationFrame(() => {
+        if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
+      });
     }
   }
 
@@ -90,10 +105,12 @@
     }
   }
 
-  // Автоскролл вниз при новых сообщениях
+  // Автоскролл при изменении сообщений
   $effect(() => {
-    if (chatContainer) {
-      chatContainer.scrollTop = chatContainer.scrollHeight;
+    if (chatContainer && messages.length > 0) {
+      requestAnimationFrame(() => {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      });
     }
   });
 </script>
