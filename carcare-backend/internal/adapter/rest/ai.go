@@ -54,8 +54,55 @@ type yandexGPTResponse struct {
 	} `json:"result"`
 }
 
-// systemPrompt — инструкция для AI на основе документации
-const systemPrompt = "Ты — AI-помощник приложения CarCare. Приложение для учёта расходов на автомобиль.\n\nТвои задачи:\n1. Отвечать на вопросы пользователей о том, как пользоваться приложением.\n2. Создавать сущности (автомобили, заправки, ТО, штрафы) по текстовому описанию пользователя.\n\nПравила:\n- Отвечай на том же языке, на котором задан вопрос.\n- Если данных не хватает — задавай уточняющие вопросы по одному за раз.\n- Будь дружелюбным и полезным.\n\nВАЖНО: Если пользователь просит создать сущность, ты ДОЛЖЕН вернуть JSON-блок с действием в конце своего ответа.\nФормат JSON-блока:\n{\"action\": \"create_car\", \"data\": {\"brand\": \"...\", \"model\": \"...\", \"year\": 2024}}\n\nДоступные действия и их поля:\n\n1. create_car — создать автомобиль\n   Поля: brand (обяз), model (обяз), year (обяз, число), vin (опц), plate (опц)\n\n2. create_fuel — создать заправку\n   Поля: car_id (обяз), volume (обяз, число), price (обяз, число), type (обяз: АИ-92/АИ-95/АИ-98/Дизель/Газ), date (обяз, формат ГГГГ-ММ-ДД)\n\n3. create_maintenance — создать ТО\n   Поля: car_id (обяз), type (обяз: Замена масла/Замена шин/Техосмотр/Ремонт/Страховка/Другое), date (обяз, формат ГГГГ-ММ-ДД), cost (обяз, число), description (опц)\n\n4. create_fine — создать штраф\n   Поля: car_id (обяз), amount (обяз, число), type (обяз), date (обяз, формат ГГГГ-ММ-ДД), status (опц: paid/unpaid), description (опц)\n\nПример ответа с созданием авто:\n\"Отлично! Добавляю автомобиль Toyota Camry 2020.\n{\"action\": \"create_car\", \"data\": {\"brand\": \"Toyota\", \"model\": \"Camry\", \"year\": 2020}}\"\n\nЕсли пользователь не указал автомобиль (car_id), спроси какой автомобиль.\nЕсли пользователь не указал обязательные поля — задай уточняющий вопрос.\n\nИнформация о приложении:\n- Типы топлива: АИ-92, АИ-95, АИ-98, Дизель, Газ\n- Типы ТО: Замена масла, Замена шин, Техосмотр, Ремонт, Страховка, Другое\n- Статус штрафа: unpaid (не оплачен), paid (оплачен)"
+// systemPrompt — инструкция для AI
+const systemPrompt = `Ты — AI-помощник приложения CarCare для учёта расходов на автомобиль.
+
+Твои задачи:
+1. Отвечать на вопросы пользователей о том, как пользоваться приложением.
+2. Создавать сущности (автомобили, заправки, ТО, штрафы) по текстовому описанию.
+
+ВАЖНЫЕ ПРАВИЛА СОЗДАНИЯ СУЩНОСТЕЙ:
+- НИКОГДА не создавай сущность, пока не собраны ВСЕ обязательные поля.
+- Если данных не хватает — задавай уточняющие вопросы по одному за раз.
+- НЕ используй ID из базы данных. Спрашивай понятными пользователю названиями.
+- Для привязки к автомобилю спрашивай марку, модель и госномер.
+
+Обязательные поля для каждой сущности:
+
+1. АВТОМОБИЛЬ (create_car):
+   - brand (марка) — например Toyota, Lada
+   - model (модель) — например Camry, Granta
+   - year (год выпуска) — число
+   - vin (VIN-номер) — 17 символов
+   - plate (госномер) — например A123BC777
+   Создавай автомобиль ТОЛЬКО когда есть все 5 полей.
+
+2. ЗАПРАВКА (create_fuel):
+   - Автомобиль (спроси марку, модель, госномер)
+   - volume (объём в литрах)
+   - price (цена за литр)
+   - type (тип топлива: АИ-92, АИ-95, АИ-98, Дизель, Газ)
+   - date (дата в формате ГГГГ-ММ-ДД)
+
+3. ТЕХОБСЛУЖИВАНИЕ (create_maintenance):
+   - Автомобиль (спроси марку, модель, госномер)
+   - type (тип работ: Замена масла, Замена шин, Техосмотр, Ремонт, Страховка, Другое)
+   - date (дата в формате ГГГГ-ММ-ДД)
+   - cost (стоимость)
+
+4. ШТРАФ (create_fine):
+   - Автомобиль (спроси марку, модель, госномер)
+   - amount (сумма)
+   - type (статья нарушения)
+   - date (дата в формате ГГГГ-ММ-ДД)
+
+Формат JSON для действия (возвращай в конце ответа):
+{"action": "create_car", "data": {"brand": "Toyota", "model": "Camry", "year": 2020, "vin": "JTEBU29J205000111", "plate": "A123BC777"}}
+
+Для заправки, ТО и штрафа вместо car_id передавай поля car_brand, car_model, car_plate для поиска автомобиля.
+Пример: {"action": "create_fuel", "data": {"car_brand": "Toyota", "car_model": "Camry", "car_plate": "A123BC777", "volume": 45, "price": 55, "type": "АИ-95", "date": "2026-06-09"}}
+
+Отвечай на том же языке, на котором задан вопрос. Будь дружелюбным.`
 
 // AIAction — структура действия из JSON
 type AIAction struct {
@@ -125,10 +172,9 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // tryExecuteAction ищет JSON-блок с действием в ответе AI и выполняет его
 func (h *ChatHandler) tryExecuteAction(response string, userID string) string {
-	// Ищем JSON-блок в ответе
 	start := strings.Index(response, "{\"action\":")
 	if start == -1 {
-		return "" // нет действия
+		return ""
 	}
 	end := strings.LastIndex(response, "}")
 	if end == -1 || end < start {
@@ -141,7 +187,6 @@ func (h *ChatHandler) tryExecuteAction(response string, userID string) string {
 		return ""
 	}
 
-	// Выполняем действие
 	switch action.Action {
 	case "create_car":
 		return h.executeCreateCar(action.Data, userID)
@@ -189,71 +234,140 @@ func getInt(data map[string]interface{}, key string) int {
 	return 0
 }
 
+// findCarByDetails ищет автомобиль пользователя по марке, модели и госномеру
+func (h *ChatHandler) findCarByDetails(data map[string]interface{}, userID string) (string, string) {
+	brand := getString(data, "car_brand")
+	model := getString(data, "car_model")
+	plate := getString(data, "car_plate")
+
+	cars, err := h.uc.Car.ListCars(userID)
+	if err != nil {
+		return "", ""
+	}
+
+	for _, c := range cars {
+		if brand != "" && !strings.EqualFold(c.Brand, brand) {
+			continue
+		}
+		if model != "" && !strings.EqualFold(c.Model, model) {
+			continue
+		}
+		if plate != "" && !strings.EqualFold(c.Plate, plate) {
+			continue
+		}
+		// Если хотя бы что-то совпало — возвращаем
+		if brand == "" && model == "" && plate == "" {
+			continue
+		}
+		return c.ID, fmt.Sprintf("%s %s (%s)", c.Brand, c.Model, c.Plate)
+	}
+	return "", ""
+}
+
 func (h *ChatHandler) executeCreateCar(data map[string]interface{}, userID string) string {
+	brand := getString(data, "brand")
+	model := getString(data, "model")
+	year := getInt(data, "year")
+	vin := getString(data, "vin")
+	plate := getString(data, "plate")
+
+	// Проверяем, что все обязательные поля заполнены
+	missingFields := []string{}
+	if brand == "" {
+		missingFields = append(missingFields, "марку")
+	}
+	if model == "" {
+		missingFields = append(missingFields, "модель")
+	}
+	if year <= 0 {
+		missingFields = append(missingFields, "год выпуска")
+	}
+	if vin == "" {
+		missingFields = append(missingFields, "VIN-номер")
+	}
+	if plate == "" {
+		missingFields = append(missingFields, "госномер")
+	}
+
+	if len(missingFields) > 0 {
+		return fmt.Sprintf("❌ Не хватает данных: %s. Пожалуйста, укажите все данные для создания автомобиля.", strings.Join(missingFields, ", "))
+	}
+
 	c := car.Car{
 		ID:     uuid.New().String(),
 		UserID: userID,
-		Brand:  getString(data, "brand"),
-		Model:  getString(data, "model"),
-		Year:   getInt(data, "year"),
-		VIN:    getString(data, "vin"),
-		Plate:  getString(data, "plate"),
-	}
-
-	if c.Brand == "" || c.Model == "" {
-		return "❌ Не указаны марка или модель автомобиля. Пожалуйста, укажите их."
+		Brand:  brand,
+		Model:  model,
+		Year:   year,
+		VIN:    vin,
+		Plate:  plate,
 	}
 
 	if err := h.uc.Car.AddCar(c); err != nil {
 		return fmt.Sprintf("❌ Ошибка при создании автомобиля: %s", err.Error())
 	}
 
-	return fmt.Sprintf("✅ Автомобиль **%s %s** (%d) успешно добавлен! 🚗", c.Brand, c.Model, c.Year)
+	return fmt.Sprintf("✅ Автомобиль **%s %s** (%d) успешно добавлен! 🚗\nГосномер: %s\nVIN: %s", brand, model, year, plate, vin)
 }
 
 func (h *ChatHandler) executeCreateFuel(data map[string]interface{}, userID string) string {
+	carID, carName := h.findCarByDetails(data, userID)
+	if carID == "" {
+		return "❌ Не удалось найти автомобиль. Укажите марку, модель и госномер автомобиля."
+	}
+
 	e := fuel.FuelEvent{
 		ID:     uuid.New().String(),
-		CarID:  getString(data, "car_id"),
+		CarID:  carID,
 		Volume: getFloat(data, "volume"),
 		Price:  getFloat(data, "price"),
 		Type:   getString(data, "type"),
 		Date:   getString(data, "date"),
 	}
 
-	if e.CarID == "" || e.Volume <= 0 || e.Price <= 0 || e.Type == "" || e.Date == "" {
-		return "❌ Не хватает данных для создания заправки. Укажите автомобиль, объём, цену, тип топлива и дату."
+	if e.Volume <= 0 || e.Price <= 0 || e.Type == "" || e.Date == "" {
+		return "❌ Не хватает данных для создания заправки. Укажите объём, цену, тип топлива и дату."
 	}
 
 	if err := h.uc.Fuel.AddFuelEvent(e); err != nil {
 		return fmt.Sprintf("❌ Ошибка при создании заправки: %s", err.Error())
 	}
 
-	return fmt.Sprintf("✅ Заправка добавлена: %.1f л %s по %.2f ₽/л на сумму %.2f ₽ 🛢️", e.Volume, e.Type, e.Price, e.Volume*e.Price)
+	return fmt.Sprintf("✅ Заправка добавлена для %s: %.1f л %s по %.2f ₽/л 🛢️", carName, e.Volume, e.Type, e.Price)
 }
 
 func (h *ChatHandler) executeCreateMaintenance(data map[string]interface{}, userID string) string {
+	carID, carName := h.findCarByDetails(data, userID)
+	if carID == "" {
+		return "❌ Не удалось найти автомобиль. Укажите марку, модель и госномер автомобиля."
+	}
+
 	e := maintenance.MaintenanceEvent{
 		ID:          uuid.New().String(),
-		CarID:       getString(data, "car_id"),
+		CarID:       carID,
 		Type:        getString(data, "type"),
 		Date:        getString(data, "date"),
 		Cost:        getFloat(data, "cost"),
 		Description: getString(data, "description"),
 	}
 
-	if e.CarID == "" || e.Type == "" || e.Date == "" || e.Cost <= 0 {
-		return "❌ Не хватает данных для создания ТО. Укажите автомобиль, тип работ, дату и стоимость."
+	if e.Type == "" || e.Date == "" || e.Cost <= 0 {
+		return "❌ Не хватает данных для создания ТО. Укажите тип работ, дату и стоимость."
 	}
 
 	if err := h.uc.Maintenance.AddMaintenanceEvent(e); err != nil {
 		return fmt.Sprintf("❌ Ошибка при создании ТО: %s", err.Error())
 	}
 
-	return fmt.Sprintf("✅ Техобслуживание добавлено: %s на сумму %.2f ₽ 🔧", e.Type, e.Cost)
+	return fmt.Sprintf("✅ Техобслуживание добавлено для %s: %s на сумму %.2f ₽ 🔧", carName, e.Type, e.Cost)
 }
 
 func (h *ChatHandler) executeCreateFine(data map[string]interface{}, userID string) string {
+	carID, carName := h.findCarByDetails(data, userID)
+	if carID == "" {
+		return "❌ Не удалось найти автомобиль. Укажите марку, модель и госномер автомобиля."
+	}
+
 	status := getString(data, "status")
 	if status == "" {
 		status = "unpaid"
@@ -261,7 +375,7 @@ func (h *ChatHandler) executeCreateFine(data map[string]interface{}, userID stri
 
 	f := fine.Fine{
 		ID:          uuid.New().String(),
-		CarID:       getString(data, "car_id"),
+		CarID:       carID,
 		Amount:      getFloat(data, "amount"),
 		Type:        getString(data, "type"),
 		Date:        getString(data, "date"),
@@ -269,8 +383,8 @@ func (h *ChatHandler) executeCreateFine(data map[string]interface{}, userID stri
 		Description: getString(data, "description"),
 	}
 
-	if f.CarID == "" || f.Amount <= 0 || f.Type == "" || f.Date == "" {
-		return "❌ Не хватает данных для создания штрафа. Укажите автомобиль, сумму, статью и дату."
+	if f.Amount <= 0 || f.Type == "" || f.Date == "" {
+		return "❌ Не хватает данных для создания штрафа. Укажите сумму, статью и дату."
 	}
 
 	if err := h.uc.Fine.AddFine(f); err != nil {
@@ -282,7 +396,7 @@ func (h *ChatHandler) executeCreateFine(data map[string]interface{}, userID stri
 		statusText = "оплачен"
 	}
 
-	return fmt.Sprintf("✅ Штраф добавлен: %.2f ₽ по статье %s (статус: %s) 📋", f.Amount, f.Type, statusText)
+	return fmt.Sprintf("✅ Штраф добавлен для %s: %.2f ₽ по статье %s (статус: %s) 📋", carName, f.Amount, f.Type, statusText)
 }
 
 func (h *ChatHandler) callYandexGPT(userMessage string) (string, error) {
@@ -338,16 +452,16 @@ func (h *ChatHandler) fallbackResponse(message string) string {
 
 	switch {
 	case strings.Contains(msg, "автомобил") || strings.Contains(msg, "машин") || strings.Contains(msg, "добавить авто"):
-		return "Чтобы добавить автомобиль, перейдите в раздел \"Мои автомобили\" и нажмите \"Добавить автомобиль\". Укажите марку, модель, год выпуска и при необходимости VIN и госномер. Если хотите, я могу помочь — просто напишите данные автомобиля текстом, например: \"Toyota Camry 2020\"."
+		return "Чтобы добавить автомобиль, перейдите в раздел \"Мои автомобили\" и нажмите \"Добавить автомобиль\". Укажите марку, модель, год выпуска, VIN и госномер."
 
 	case strings.Contains(msg, "заправк") || strings.Contains(msg, "топлив") || strings.Contains(msg, "бензин"):
-		return "Чтобы добавить заправку, перейдите в раздел \"Топливо\" и нажмите \"Добавить заправку\". Укажите дату, объём в литрах, тип топлива, цену и пробег. Если хотите, я могу помочь — просто напишите данные, например: \"Залил 45 литров АИ-95 по 55 рублей\"."
+		return "Чтобы добавить заправку, перейдите в раздел \"Топливо\" и нажмите \"Добавить заправку\". Укажите дату, объём в литрах, тип топлива, цену и пробег."
 
 	case strings.Contains(msg, "то ") || strings.Contains(msg, "техобслуж") || strings.Contains(msg, "ремонт"):
-		return "Чтобы добавить запись о техобслуживании, перейдите в раздел \"Техобслуживание\". Укажите дату, тип работ, пробег и стоимость. Типы работ: замена масла, замена шин, техосмотр, ремонт, страховка или другое."
+		return "Чтобы добавить запись о техобслуживании, перейдите в раздел \"Техобслуживание\". Укажите дату, тип работ, пробег и стоимость."
 
 	case strings.Contains(msg, "штраф"):
-		return "Чтобы добавить штраф, перейдите в раздел \"Штрафы\" и нажмите \"Добавить штраф\". Укажите дату, номер постановления, сумму и статью нарушения. Статус по умолчанию — \"не оплачен\"."
+		return "Чтобы добавить штраф, перейдите в раздел \"Штрафы\" и нажмите \"Добавить штраф\". Укажите дату, номер постановления, сумму и статью нарушения."
 
 	case strings.Contains(msg, "отчёт") || strings.Contains(msg, "статистик") || strings.Contains(msg, "расход"):
 		return "В разделе \"Отчёты\" вы можете увидеть сводку по всем расходам: топливо, ТО и штрафы. Доступны фильтры по периоду (день, неделя, месяц, год) и графики распределения расходов."
