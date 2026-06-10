@@ -30,6 +30,7 @@
   let formYear = $state<string | number>('');
   let formVin = $state('');
   let formPlate = $state('');
+  let formSts = $state('');
 
   // Подтверждение удаления
   let deleteId = $state<string | null>(null);
@@ -117,6 +118,7 @@
     formYear = '';
     formVin = '';
     formPlate = '';
+    formSts = '';
     saveError = '';
     modalOpen = true;
   }
@@ -128,6 +130,7 @@
     formYear = car.year;
     formVin = car.vin;
     formPlate = car.plate ?? '';
+    formSts = car.sts ?? '';
     saveError = '';
     modalOpen = true;
   }
@@ -158,7 +161,8 @@
           model: String(formModel).trim(),
           year,
           vin: String(formVin).trim(),
-          plate: String(formPlate).trim()
+          plate: String(formPlate).trim(),
+          sts: String(formSts).trim()
         });
       } else {
         await addCar({
@@ -167,7 +171,8 @@
           model: String(formModel).trim(),
           year,
           vin: String(formVin).trim(),
-          plate: String(formPlate).trim()
+          plate: String(formPlate).trim(),
+          sts: String(formSts).trim()
         });
       }
       modalOpen = false;
@@ -242,6 +247,9 @@
               {#if car.plate}
                 <div class="car-plate">{car.plate}</div>
               {/if}
+              {#if car.sts}
+                <div class="car-sts">СТС: {car.sts}</div>
+              {/if}
             </div>
             <div class="car-actions">
               <button class="icon-btn edit-btn" title="Редактировать" onclick={() => openEdit(car)}>
@@ -307,6 +315,7 @@
     <Input label="Год" type="number" placeholder="2022" bind:value={formYear} required inputProps={{min: 1886, max: currentYear}} />
     <Input label="VIN (17 символов)" placeholder="JTDBE30K673012345" bind:value={formVin} required />
     <Input label="Гос. номер" placeholder="А123БВ77" bind:value={formPlate} />
+    <Input label="СТС (свидетельство о регистрации)" placeholder="99 77 842669" bind:value={formSts} />
     {#if saveError}
       <div class="form-error" role="alert">{saveError}</div>
     {/if}
@@ -422,6 +431,14 @@
   color: var(--accent-text);
   padding: 0.125rem 0.5rem;
   border-radius: var(--radius-sm);
+}
+
+.car-sts {
+  display: inline-block;
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  font-family: monospace;
 }
 
 .car-actions {

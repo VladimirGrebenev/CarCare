@@ -41,6 +41,7 @@ func main() {
 	reportHandler := rest.NewReportHandler(uc)
 	authHandler := rest.NewAuthHandler(authUC)
 	chatHandler := rest.NewChatHandler(uc)
+	finesByStsHandler := rest.NewFinesByStsHandler()
 
 	// Публичные маршруты — без аутентификации
 	http.HandleFunc("/health", rest.HealthCheckHandler)
@@ -50,6 +51,7 @@ func main() {
 
 	// Защищённые маршруты — требуют валидный JWT
 	http.Handle("/api/ai/chat", rest.AuthMiddleware(chatHandler))
+	http.Handle("/api/fines/check-by-sts", rest.AuthMiddleware(finesByStsHandler))
 	http.Handle("/cars", rest.AuthMiddleware(carHandler))
 	http.Handle("/cars/", rest.AuthMiddleware(carHandler))
 	http.Handle("/api/cars", rest.AuthMiddleware(rest.AliasPrefixHandler("/api", "", carHandler)))

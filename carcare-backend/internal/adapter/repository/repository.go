@@ -23,8 +23,8 @@ func NewCarRepository(db *sql.DB) *CarRepository {
 }
 
 func (r *CarRepository) AddCar(c car.Car) error {
-	_, err := r.db.Exec(`INSERT INTO cars (id, user_id, brand, model, year, vin, plate) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-		c.ID, c.UserID, c.Brand, c.Model, c.Year, c.VIN, c.Plate)
+	_, err := r.db.Exec(`INSERT INTO cars (id, user_id, brand, model, year, vin, plate, sts) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+		c.ID, c.UserID, c.Brand, c.Model, c.Year, c.VIN, c.Plate, c.Sts)
 	if err != nil {
 		if isUniqueViolation(err) {
 			return fmt.Errorf("car with VIN already exists: %w", err)
@@ -36,8 +36,8 @@ func (r *CarRepository) AddCar(c car.Car) error {
 
 func (r *CarRepository) GetCar(id string) (car.Car, error) {
 	var c car.Car
-	err := r.db.QueryRow(`SELECT id, user_id, brand, model, year, vin, plate FROM cars WHERE id = $1`, id).
-		Scan(&c.ID, &c.UserID, &c.Brand, &c.Model, &c.Year, &c.VIN, &c.Plate)
+	err := r.db.QueryRow(`SELECT id, user_id, brand, model, year, vin, plate, COALESCE(sts,'') FROM cars WHERE id = $1`, id).
+		Scan(&c.ID, &c.UserID, &c.Brand, &c.Model, &c.Year, &c.VIN, &c.Plate, &c.Sts)
 	if err == sql.ErrNoRows {
 		return car.Car{}, fmt.Errorf("car not found")
 	}
@@ -48,8 +48,8 @@ func (r *CarRepository) GetCar(id string) (car.Car, error) {
 }
 
 func (r *CarRepository) UpdateCar(c car.Car, userID string) error {
-	res, err := r.db.Exec(`UPDATE cars SET brand=$1, model=$2, year=$3, vin=$4, plate=$5 WHERE id=$6 AND user_id=$7`,
-		c.Brand, c.Model, c.Year, c.VIN, c.Plate, c.ID, userID)
+	res, err := r.db.Exec(`UPDATE cars SET brand=$1, model=$2, year=$3, vin=$4, plate=$5, sts=$6 WHERE id=$7 AND user_id=$8`,
+		c.Brand, c.Model, c.Year, c.VIN, c.Plate, c.Sts, c.ID, userID)
 	if err != nil {
 		return err
 	}
@@ -73,7 +73,7 @@ func (r *CarRepository) DeleteCar(id string, userID string) error {
 }
 
 func (r *CarRepository) ListCars(userID string) ([]car.Car, error) {
-	rows, err := r.db.Query(`SELECT id, user_id, brand, model, year, vin, plate FROM cars WHERE user_id = $1`, userID)
+	rows, err := r.db.Query(`SELECT id, user_id, brand, model, year, vin, plate, COALESCE(sts,'') FROM cars WHERE user_id = $1`, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func (r *CarRepository) ListCars(userID string) ([]car.Car, error) {
 	cars := make([]car.Car, 0)
 	for rows.Next() {
 		var c car.Car
-		if err := rows.Scan(&c.ID, &c.UserID, &c.Brand, &c.Model, &c.Year, &c.VIN, &c.Plate); err != nil {
+		if err := rows.Scan(&c.ID, &c.UserID, &c.Brand, &c.Model, &c.Year, &c.VIN, &c.Plate, &c.Sts); err != nil {
 			return nil, err
 		}
 		cars = append(cars, c)
