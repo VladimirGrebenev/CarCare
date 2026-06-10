@@ -4,6 +4,8 @@ export interface Car {
   model: string;
   year: number;
   plate: string;
+  vin: string;
+  sts: string;
 }
 // src/lib/types.ts
 export interface Fine {

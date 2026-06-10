@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS cars (
     model   VARCHAR(100) NOT NULL,
     year    INT          NOT NULL,
     vin     VARCHAR(100) NOT NULL UNIQUE,
-    plate   VARCHAR(20)
+    plate   VARCHAR(20),
+    sts     VARCHAR(20)
 );
 CREATE INDEX IF NOT EXISTS idx_cars_user_id ON cars(user_id);
 
