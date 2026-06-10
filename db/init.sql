@@ -49,9 +49,11 @@ CREATE TABLE IF NOT EXISTS fines (
     type        VARCHAR(100)  NOT NULL,
     date        DATE          NOT NULL,
     status      VARCHAR(20)   NOT NULL DEFAULT 'unpaid',
-    description TEXT          NOT NULL DEFAULT ''
+    description TEXT          NOT NULL DEFAULT '',
+    bill_number VARCHAR(50)   NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_fines_car_id ON fines(car_id);
+CREATE INDEX IF NOT EXISTS idx_fines_bill_number ON fines(bill_number);
 
 CREATE TABLE IF NOT EXISTS reports (
     id         SERIAL    PRIMARY KEY,

@@ -15,5 +15,6 @@ export interface Fine {
   description: string;
   status: 'paid' | 'unpaid';
   carId?: string;
+  billNumber?: string;
   [key: string]: unknown;
 }

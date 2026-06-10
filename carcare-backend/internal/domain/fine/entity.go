@@ -8,4 +8,5 @@ type Fine struct {
 	Date        string  `json:"date"`
 	Status      string  `json:"status"`
 	Description string  `json:"description"`
+	BillNumber  string  `json:"bill_number"`
 }

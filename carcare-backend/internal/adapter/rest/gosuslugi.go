@@ -7,6 +7,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
+
+	"github.com/VladimirGrebenev/CarCare-backend/internal/domain/fine"
+	"github.com/VladimirGrebenev/CarCare-backend/internal/usecase"
 )
 
 // GosuslugiFineRequest — запрос к API Госуслуг
@@ -52,10 +55,14 @@ type CheckFinesByStsResponse struct {
 }
 
 // FinesByStsHandler — обрабатывает запросы на получение штрафов по СТС
-type FinesByStsHandler struct{}
+type FinesByStsHandler struct {
+	fineRepo fine.Repository
+}
 
-func NewFinesByStsHandler() *FinesByStsHandler {
-	return &FinesByStsHandler{}
+func NewFinesByStsHandler(uc *usecase.UsecaseContainer) *FinesByStsHandler {
+	return &FinesByStsHandler{
+		fineRepo: uc.Fine,
+	}
 }
 
 func (h *FinesByStsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -148,4 +155,41 @@ func (h *FinesByStsHandler) checkFines(sts string) ([]GosuslugiBill, error) {
 	}
 
 	return gosResp.Bills, nil
+}
+
+// CreateFineFromBill создаёт штраф из данных Госуслуг, проверяя дубликаты
+func (h *FinesByStsHandler) CreateFineFromBill(carID string, bill GosuslugiBill) (bool, error) {
+	// Проверяем, есть ли уже такой штраф
+	if bill.BillNumber != "" {
+		exists, err := h.fineRepo.CheckFineExistsByBillNumber(carID, bill.BillNumber)
+		if err != nil {
+			return false, err
+		}
+		if exists {
+			return false, nil // уже есть — пропускаем
+		}
+	}
+
+	billDate := time.UnixMilli(bill.BillDate).Format("2006-01-02")
+
+	f := fine.Fine{
+		ID:          fmt.Sprintf("%d", bill.BillID),
+		CarID:       carID,
+		Amount:      bill.Amount,
+		Type:        "Госуслуги",
+		Date:        billDate,
+		Status:      "unpaid",
+		Description: bill.BillName,
+		BillNumber:  bill.BillNumber,
+	}
+
+	if bill.IsPaid {
+		f.Status = "paid"
+	}
+
+	if err := h.fineRepo.AddFine(f); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
