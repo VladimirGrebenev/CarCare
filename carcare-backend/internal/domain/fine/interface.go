@@ -6,4 +6,5 @@ type Repository interface {
 	UpdateFine(fine Fine) error
 	DeleteFine(id string) error
 	ListFines(userID string) ([]Fine, error)
+	CheckFineExistsByBillNumber(carID string, billNumber string) (bool, error)
 }
