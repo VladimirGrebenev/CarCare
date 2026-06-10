@@ -408,6 +408,21 @@ export async function deleteFine(id) {
   return { success: true };
 }
 
+// --- Gosuslugi fines check ---
+export async function fetchFinesBySts(sts: string) {
+  const res = await fetch('/api/fines/check-by-sts', {
+    method: 'POST',
+    headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
+    credentials: 'include',
+    body: JSON.stringify({ sts })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Ошибка при получении штрафов');
+  }
+  return res.json();
+}
+
 export async function fetchUsers() {
   // TODO: Implement API call to backend
   return [];

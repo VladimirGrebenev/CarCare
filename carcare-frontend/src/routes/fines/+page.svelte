@@ -12,7 +12,7 @@
     filteredFinesList, loadFines, createFine, editFine, removeFine
   } from '../../stores/fines';
   import type { Fine } from '../../lib/types';
-  import { fetchCars } from '../../lib/api';
+  import { fetchCars, fetchFinesBySts } from '../../lib/api';
   import type { Car } from '../../lib/types';
 
   const COLUMNS = [
@@ -23,6 +23,8 @@
   ];
 
   let cars = $state<Car[]>([]);
+  let stsLoading = $state(false);
+  let stsError = $state('');
 
   function formatDate(raw: string | null | undefined): string {
     if (!raw) return '—';
@@ -247,6 +249,55 @@
     }
   }
 
+  async function handleFetchBySts() {
+    stsError = '';
+    // Находим машины с СТС
+    const carsWithSts = cars.filter(c => c.sts && c.sts.trim());
+    if (carsWithSts.length === 0) {
+      stsError = 'Нет автомобилей с указанным СТС. Добавьте СТС в карточку автомобиля.';
+      toast = { open: true, message: stsError, type: 'error' };
+      return;
+    }
+
+    stsLoading = true;
+    let totalFound = 0;
+    let totalErrors = 0;
+
+    for (const car of carsWithSts) {
+      try {
+        const result = await fetchFinesBySts(car.sts);
+        if (result.fines && result.fines.length > 0) {
+          for (const bill of result.fines) {
+            // Создаём штраф в системе
+            const billDate = new Date(bill.billDate).toISOString().split('T')[0];
+            await createFine({
+              carId: car.id,
+              amount: bill.amount,
+              type: 'Госуслуги',
+              date: billDate,
+              status: bill.isPaid ? 'paid' : 'unpaid',
+              description: bill.billName || `Штраф №${bill.billNumber}`,
+            });
+            totalFound++;
+          }
+        }
+      } catch {
+        totalErrors++;
+      }
+    }
+
+    stsLoading = false;
+
+    if (totalFound > 0) {
+      toast = { open: true, message: `Найдено и добавлено ${totalFound} штрафов`, type: 'success' };
+      loadFines();
+    } else if (totalErrors > 0) {
+      toast = { open: true, message: 'Не удалось проверить некоторые автомобили. Сервис временно недоступен.', type: 'error' };
+    } else {
+      toast = { open: true, message: 'Штрафов по указанным СТС не найдено', type: 'info' };
+    }
+  }
+
   onMount(async () => {
     await ensureAuthenticated();
     try {
@@ -296,7 +347,10 @@
         </select>
       </div>
     </div>
-    <Button variant="primary" onclick={openAdd}>+ Добавить</Button>
+    <div class="toolbar-actions">
+      <Button variant="secondary" onclick={handleFetchBySts} loading={stsLoading}>Получить по СТС</Button>
+      <Button variant="primary" onclick={openAdd}>+</Button>
+    </div>
   {/snippet}
 
   <Table
@@ -446,6 +500,8 @@
 
 .filter-field { display: flex; flex-direction: column; gap: 0.375rem; }
 .filter-label { font-size: 0.8125rem; font-weight: 600; color: var(--text-secondary); }
+
+.toolbar-actions { display: flex; gap: 0.5rem; align-items: center; }
 
 .form-grid {
   display: grid;

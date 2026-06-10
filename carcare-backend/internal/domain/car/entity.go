@@ -8,4 +8,5 @@ type Car struct {
 	Year   int    `json:"year"`
 	VIN    string `json:"vin"`
 	Plate  string `json:"plate"`
+	Sts    string `json:"sts"`
 }
