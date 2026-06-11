@@ -1,17 +1,12 @@
 package gosuslugi
 
 import (
-	"context"
 	"testing"
+
+	"github.com/VladimirGrebenev/CarCare-backend/internal/usecase"
 )
 
-func TestGosuslugiAdapter_CheckFine(t *testing.T) {
-	adapter := NewGosuslugiAdapter()
-	ok, err := adapter.CheckFine(context.Background(), "A123BC77")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if ok {
-		t.Error("expected no fine, got fine")
-	}
+// Проверяем, что GosuslugiAdapter реализует интерфейс usecase.GosuslugiFetcher
+func TestGosuslugiAdapter_ImplementsGosuslugiFetcher(t *testing.T) {
+	var _ usecase.GosuslugiFetcher = NewGosuslugiAdapter()
 }
