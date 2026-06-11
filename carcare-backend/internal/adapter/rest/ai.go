@@ -371,8 +371,11 @@ func (h *ChatHandler) executeCreateFine(data map[string]interface{}, userID stri
 		BillNumber:  getString(data, "bill_number"),
 	}
 
-	if f.Amount <= 0 || f.Date == "" {
-		return "❌ Не хватает данных для создания штрафа. Укажите сумму и дату."
+	if f.Amount <= 0 {
+		return "Укажите сумму штрафа."
+	}
+	if f.Date == "" {
+		return "Укажите дату нарушения."
 	}
 
 	if err := h.uc.Fine.AddFine(f); err != nil {
