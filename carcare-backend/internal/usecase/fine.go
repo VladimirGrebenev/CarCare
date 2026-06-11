@@ -87,6 +87,11 @@ func (uc *ImportFinesByStsUsecase) Execute(carID string, fetcher GosuslugiFetche
 			continue
 		}
 
+		if bill.BillDate == 0 {
+			result.Skipped++
+			continue
+		}
+
 		exists, err := uc.Repo.CheckFineExistsByBillNumber(carID, bill.BillNumber)
 		if err != nil {
 			return result, err

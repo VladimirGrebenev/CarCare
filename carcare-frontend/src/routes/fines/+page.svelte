@@ -285,6 +285,7 @@
     } else if (totalAdded > 0) {
       const parts: string[] = [`Добавлено ${totalAdded} штрафов.`];
       if (totalSkipped > 0) parts.push(`${totalSkipped} уже были в системе.`);
+      if (hadError) parts.push('Некоторые автомобили не удалось проверить.');
       toast = { open: true, message: parts.join(' '), type: 'success' };
       loadFines();
     } else {

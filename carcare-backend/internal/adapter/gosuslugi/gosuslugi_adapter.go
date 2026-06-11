@@ -107,6 +107,10 @@ func (a *GosuslugiAdapter) FetchBySts(sts string) ([]usecase.GosuslugiImportBill
 		if gosResp.Error.ErrorCode == 1 {
 			return []usecase.GosuslugiImportBill{}, nil
 		}
+		// Но если есть Errors[] и там ErrorCode==1 — это всё же "нет штрафов"
+		if len(gosResp.Errors) > 0 && gosResp.Errors[0].ErrorCode == 1 {
+			return []usecase.GosuslugiImportBill{}, nil
+		}
 		return nil, fmt.Errorf("ошибка Госуслуг: %s", gosResp.Error.ErrorMessage)
 	}
 
