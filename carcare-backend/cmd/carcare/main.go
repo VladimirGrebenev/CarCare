@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 
+	gosuslugi_adapter "github.com/VladimirGrebenev/CarCare-backend/internal/adapter/gosuslugi"
 	"github.com/VladimirGrebenev/CarCare-backend/internal/adapter/repository"
 	"github.com/VladimirGrebenev/CarCare-backend/internal/adapter/rest"
 	"github.com/VladimirGrebenev/CarCare-backend/internal/infrastructure/db"
@@ -41,7 +42,8 @@ func main() {
 	reportHandler := rest.NewReportHandler(uc)
 	authHandler := rest.NewAuthHandler(authUC)
 	chatHandler := rest.NewChatHandler(uc)
-	finesByStsHandler := rest.NewFinesByStsHandler(uc)
+	gosuslugiAdpt := gosuslugi_adapter.NewGosuslugiAdapter()
+	importFinesHandler := rest.NewImportFinesByStsHandler(uc, gosuslugiAdpt)
 
 	// Публичные маршруты — без аутентификации
 	http.HandleFunc("/health", rest.HealthCheckHandler)
@@ -51,7 +53,7 @@ func main() {
 
 	// Защищённые маршруты — требуют валидный JWT
 	http.Handle("/api/ai/chat", rest.AuthMiddleware(chatHandler))
-	http.Handle("/api/fines/check-by-sts", rest.AuthMiddleware(finesByStsHandler))
+	http.Handle("/api/fines/import-sts", rest.AuthMiddleware(importFinesHandler))
 	http.Handle("/cars", rest.AuthMiddleware(carHandler))
 	http.Handle("/cars/", rest.AuthMiddleware(carHandler))
 	http.Handle("/api/cars", rest.AuthMiddleware(rest.AliasPrefixHandler("/api", "", carHandler)))
