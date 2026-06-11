@@ -9,6 +9,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -79,11 +80,17 @@ type AIAction struct {
 	Data   map[string]interface{} `json:"data"`
 }
 
+type pendingAction struct {
+	action string
+	data   map[string]interface{}
+}
+
 // ChatHandler — обрабатывает запросы к AI
 type ChatHandler struct {
 	yandexGPTFolderID string
 	apiKey            string
 	uc                *usecase.UsecaseContainer
+	pendingActions    sync.Map // map[userID]pendingAction
 }
 
 func NewChatHandler(uc *usecase.UsecaseContainer) *ChatHandler {
@@ -125,6 +132,28 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Проверяем ожидающее подтверждения действие
+	if pending, ok := h.pendingActions.Load(userID); ok {
+		msg := strings.ToLower(strings.TrimSpace(req.Message))
+		if isAffirmative(msg) {
+			h.pendingActions.Delete(userID)
+			pa := pending.(pendingAction)
+			var result string
+			if pa.action == "create_fine" {
+				result = h.executeCreateFine(pa.data, userID)
+			}
+			json.NewEncoder(w).Encode(ChatResponse{Reply: result})
+			return
+		}
+		if isNegative(msg) {
+			h.pendingActions.Delete(userID)
+			json.NewEncoder(w).Encode(ChatResponse{Reply: "Хорошо, создание отменено. Чем ещё могу помочь?"})
+			return
+		}
+		// Не да/нет — сбрасываем pending и продолжаем обычный диалог
+		h.pendingActions.Delete(userID)
+	}
+
 	reply, err := h.callYandexGPT(req.Message, req.History)
 	if err != nil {
 		reply = h.fallbackResponse(req.Message)
@@ -137,6 +166,66 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(ChatResponse{Reply: reply})
+}
+
+func isAffirmative(msg string) bool {
+	for _, a := range []string{"да", "давай", "подтверждаю", "верно", "ок", "ok", "yes", "согласен", "создай", "создавай", "все верно", "всё верно"} {
+		if msg == a || strings.HasPrefix(msg, a+" ") || strings.HasPrefix(msg, a+",") {
+			return true
+		}
+	}
+	return false
+}
+
+func isNegative(msg string) bool {
+	for _, a := range []string{"нет", "no", "отмена", "отменить", "стоп", "не надо", "неверно", "не верно"} {
+		if msg == a || strings.HasPrefix(msg, a+" ") || strings.HasPrefix(msg, a+",") {
+			return true
+		}
+	}
+	return false
+}
+
+func (h *ChatHandler) confirmCreateFine(data map[string]interface{}, userID string) string {
+	amount := getFloat(data, "amount")
+	date := getString(data, "date")
+	description := getString(data, "description")
+
+	if amount <= 0 {
+		return "Укажите сумму штрафа."
+	}
+	if date == "" {
+		return "Укажите дату нарушения."
+	}
+	if description == "" {
+		return "Опишите нарушение (например: превышение скорости, парковка в неположенном месте)."
+	}
+
+	// Ищем название машины для отображения
+	plate := normalizePlate(getString(data, "car_plate"))
+	carName := plate
+	if cars, err := h.uc.Car.ListCars(userID); err == nil {
+		for _, c := range cars {
+			if strings.EqualFold(normalizePlate(c.Plate), plate) {
+				carName = fmt.Sprintf("%s %s (%s)", c.Brand, c.Model, c.Plate)
+				break
+			}
+		}
+	}
+
+	displayDate := date
+	if t, err := time.Parse("2006-01-02", date); err == nil {
+		displayDate = t.Format("02.01.2006")
+	}
+
+	billText := "нет"
+	if bn := getString(data, "bill_number"); bn != "" {
+		billText = bn
+	}
+
+	h.pendingActions.Store(userID, pendingAction{action: "create_fine", data: data})
+
+	return fmt.Sprintf("Подтвердите создание штрафа:\n• Автомобиль: %s\n• Дата: %s\n• Сумма: %.0f ₽\n• Описание: %s\n• Номер постановления: %s\n\nВсё верно? (да/нет)", carName, displayDate, amount, description, billText)
 }
 
 // tryExecuteAction ищет JSON-блок с действием в ответе AI и выполняет его
@@ -164,7 +253,7 @@ func (h *ChatHandler) tryExecuteAction(response string, userID string) string {
 	case "create_maintenance":
 		return h.executeCreateMaintenance(action.Data, userID)
 	case "create_fine":
-		return h.executeCreateFine(action.Data, userID)
+		return h.confirmCreateFine(action.Data, userID)
 	case "update_car":
 		return h.executeUpdateCar(action.Data, userID)
 	case "update_fuel":
@@ -371,11 +460,8 @@ func (h *ChatHandler) executeCreateFine(data map[string]interface{}, userID stri
 		BillNumber:  getString(data, "bill_number"),
 	}
 
-	if f.Amount <= 0 {
-		return "Укажите сумму штрафа."
-	}
-	if f.Date == "" {
-		return "Укажите дату нарушения."
+	if f.Amount <= 0 || f.Date == "" {
+		return "❌ Недостаточно данных для создания штрафа."
 	}
 
 	if err := h.uc.Fine.AddFine(f); err != nil {
