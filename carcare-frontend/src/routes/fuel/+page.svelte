@@ -13,6 +13,7 @@
   } from '../../stores/fuel';
   import type { Fuel } from '../../stores/fuel';
   import { fetchCars } from '../../lib/api';
+  import { chatActionCount } from '../../stores/chatEvents';
   import type { Car } from '../../lib/types';
 
   const FUEL_TYPES = [
@@ -264,6 +265,10 @@
   });
 
   const SORT_KEYS = ['_date', '_car', '_fuelType', 'liters', '_priceFormatted', '_total'];
+
+  $effect(() => {
+    if ($chatActionCount > 0) loadFuel();
+  });
 
   onMount(async () => {
     await ensureAuthenticated();

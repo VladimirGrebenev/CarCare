@@ -14,6 +14,7 @@
   import type { Fine } from '../../lib/types';
   import { fetchCars, importFinesBySts } from '../../lib/api';
   import type { Car } from '../../lib/types';
+  import { chatActionCount } from '../../stores/chatEvents';
 
   const COLUMNS = [
     { label: 'Дата', key: '_date' },
@@ -295,6 +296,10 @@
       toast = { open: true, message: msg, type: 'info' };
     }
   }
+
+  $effect(() => {
+    if ($chatActionCount > 0) loadFines();
+  });
 
   onMount(async () => {
     await ensureAuthenticated();

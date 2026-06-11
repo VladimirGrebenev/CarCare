@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { notifyChatAction } from '../../stores/chatEvents';
 
   interface Message {
     role: 'user' | 'assistant';
@@ -87,6 +88,9 @@
 
       const data = await res.json();
       messages = [...messages, { role: 'assistant', text: data.reply }];
+      if (data.reply && data.reply.includes('✅')) {
+        notifyChatAction();
+      }
     } catch {
       messages = [...messages, {
         role: 'assistant',
