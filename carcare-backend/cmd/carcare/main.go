@@ -41,8 +41,8 @@ func main() {
 	fineHandler := rest.NewFineHandler(uc)
 	reportHandler := rest.NewReportHandler(uc)
 	authHandler := rest.NewAuthHandler(authUC)
-	chatHandler := rest.NewChatHandler(uc)
 	gosuslugiAdpt := gosuslugi_adapter.NewGosuslugiAdapter()
+	chatHandler := rest.NewChatHandler(uc, gosuslugiAdpt)
 	importFinesHandler := rest.NewImportFinesByStsHandler(uc, gosuslugiAdpt)
 
 	// Публичные маршруты — без аутентификации
