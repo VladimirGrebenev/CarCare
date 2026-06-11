@@ -14,6 +14,7 @@
   import { ensureAuthenticated } from '../../lib/authGuard';
   import type { Car } from '../../lib/types';
   import { fetchCars, addCar, updateCar, deleteCar } from '../../lib/api';
+  import { chatActionCount } from '../../stores/chatEvents';
 
   let loading = $state(true);
   let error = $state('');
@@ -197,6 +198,10 @@
       deleteId = null;
     }
   }
+
+  $effect(() => {
+    if ($chatActionCount > 0) loadCars();
+  });
 
   onMount(async () => {
     await ensureAuthenticated();
