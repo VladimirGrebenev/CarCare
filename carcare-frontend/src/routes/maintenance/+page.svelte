@@ -14,6 +14,7 @@
     fetchCars,
   } from '../../lib/api';
   import type { Car } from '../../lib/types';
+  import { chatActionCount } from '../../stores/chatEvents';
 
   // Встроенные типы услуг
   const BUILTIN_TYPES = [
@@ -297,6 +298,10 @@
   $effect(() => {
     void filterCarId;
     page = 1;
+  });
+
+  $effect(() => {
+    if ($chatActionCount > 0) loadItems();
   });
 
   onMount(async () => {
