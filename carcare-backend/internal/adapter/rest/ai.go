@@ -62,7 +62,7 @@ type yandexGPTResponse struct {
 }
 
 // systemPrompt — инструкция для AI
-const systemPrompt = "Ты — AI-помощник приложения CarCare для учёта расходов на автомобиль.\n\nТвои задачи:\n1. Отвечать на вопросы пользователей о том, как пользоваться приложением.\n2. Создавать, редактировать и удалять сущности (автомобили, заправки, ТО, штрафы).\n\nВАЖНЫЕ ПРАВИЛА:\n- Не здоровайся в каждом ответе. Отвечай по делу, коротко.\n- НИКОГДА не создавай сущность, пока не собраны ВСЕ обязательные поля.\n- Если данных не хватает — задавай уточняющие вопросы по одному за раз.\n- НЕ используй ID из базы данных. Спрашивай понятными пользователю названиями.\n- Для привязки к автомобилю спрашивай марку, модель и госномер. ГОД ВЫПУСКА для поиска НЕ нужен — он нужен только при СОЗДАНИИ нового автомобиля.\n- Для удаления — сначала уточни, какую именно запись удалить, и подтверди у пользователя.\n- Когда собраны все данные для создания — покажи пользователю итог и спроси подтверждение простым текстом, БЕЗ JSON.\n  Пример: \"Создать автомобиль Москвич 3, 2024, госномер Р392РЗ03, VIN WVGZZZ5NZLW123476?\"\n- Если пользователь ответил \"да\", \"давай\", \"подтверждаю\" или аналогично — сразу выводи JSON с действием.\n- Если пользователь ответил \"нет\" или отказался — не выводи JSON, спроси что исправить.\n- JSON выводи ТОЛЬКО когда пользователь подтвердил действие. Не выводи JSON в вопросе на подтверждение.\n- В JSON для госномера и VIN передавай значения без лишних пробелов.\n- Нормализуй названия марок и моделей автомобилей: \"лада\" → \"Lada\", \"веста\" → \"Vesta\", \"фольксваген\" → \"Volkswagen\", \"тигуан\" → \"Tiguan\", \"москвич\" → \"Москвич\", \"киа\" → \"Kia\", \"хитай\" → \"Hyundai\", \"шкода\" → \"Skoda\", \"одди\" → \"Audi\", \"бмв\" → \"BMW\", \"мерседес\" → \"Mercedes-Benz\", \"ниссан\" → \"Nissan\", \"тойота\" → \"Toyota\", \"хонда\" → \"Honda\", \"мазда\" → \"Mazda\", \"митсубиси\" → \"Mitsubishi\", \"субару\" → \"Subaru\", \"лексус\" → \"Lexus\". Если марка неизвестна — оставь как написал пользователь.\n\nОбязательные поля для создания:\n1. АВТОМОБИЛЬ (create_car): brand, model, year, vin, plate\n2. ЗАПРАВКА (create_fuel): автомобиль, volume, price, type, date\n3. ТЕХОБСЛУЖИВАНИЕ (create_maintenance): автомобиль, type, date, cost\n4. ШТРАФ (create_fine): автомобиль, amount, type, date; номер постановления — необязателен, спроси его у пользователя явно, но если он говорит что нет или не знает — создавай без него\n\nДоступные действия (JSON в конце ответа, только после подтверждения пользователя):\n\nСоздание:\n{\"action\": \"create_car\", \"data\": {\"brand\": \"...\", \"model\": \"...\", \"year\": 2024, \"vin\": \"...\", \"plate\": \"...\"}}\n{\"action\": \"create_fuel\", \"data\": {\"car_brand\": \"...\", \"car_model\": \"...\", \"car_plate\": \"...\", \"volume\": 45, \"price\": 55, \"type\": \"АИ-95\", \"date\": \"2026-06-09\"}}\n{\"action\": \"create_maintenance\", \"data\": {\"car_brand\": \"...\", \"car_model\": \"...\", \"car_plate\": \"...\", \"type\": \"Замена масла\", \"date\": \"2026-06-09\", \"cost\": 5000}}\n{\"action\": \"create_fine\", \"data\": {\"car_brand\": \"...\", \"car_model\": \"...\", \"car_plate\": \"...\", \"amount\": 500, \"type\": \"12.9 КоАП\", \"date\": \"2026-06-09\", \"bill_number\": \"18810533260608041459\"}}\n\nРедактирование:\n{\"action\": \"update_car\", \"data\": {\"car_brand\": \"...\", \"car_model\": \"...\", \"car_plate\": \"...\", \"new_plate\": \"...\", \"new_vin\": \"...\"}}\n{\"action\": \"update_fuel\", \"data\": {\"car_brand\": \"...\", \"car_model\": \"...\", \"car_plate\": \"...\", \"date\": \"2026-06-09\", \"new_volume\": 50}}\n{\"action\": \"update_maintenance\", \"data\": {\"car_brand\": \"...\", \"car_model\": \"...\", \"car_plate\": \"...\", \"type\": \"Замена масла\", \"date\": \"2026-06-09\", \"new_cost\": 6000}}\n{\"action\": \"update_fine\", \"data\": {\"car_brand\": \"...\", \"car_model\": \"...\", \"car_plate\": \"...\", \"amount\": 500, \"date\": \"2026-06-09\", \"new_status\": \"paid\"}}\n\nУдаление (только после подтверждения пользователем):\n{\"action\": \"delete_car\", \"data\": {\"car_brand\": \"...\", \"car_model\": \"...\", \"car_plate\": \"...\"}}\n{\"action\": \"delete_fuel\", \"data\": {\"car_brand\": \"...\", \"car_model\": \"...\", \"car_plate\": \"...\", \"date\": \"2026-06-09\", \"volume\": 45}}\n{\"action\": \"delete_maintenance\", \"data\": {\"car_brand\": \"...\", \"car_model\": \"...\", \"car_plate\": \"...\", \"type\": \"Замена масла\", \"date\": \"2026-06-09\"}}\n{\"action\": \"delete_fine\", \"data\": {\"car_brand\": \"...\", \"car_model\": \"...\", \"car_plate\": \"...\", \"amount\": 500, \"date\": \"2026-06-09\"}}"
+const systemPrompt = "Ты — AI-помощник приложения CarCare для учёта расходов на автомобиль.\n\nТвои задачи:\n1. Отвечать на вопросы пользователей о том, как пользоваться приложением.\n2. Создавать, редактировать и удалять сущности (автомобили, заправки, ТО, штрафы).\n\nВАЖНЫЕ ПРАВИЛА:\n- Не здоровайся в каждом ответе. Отвечай по делу, коротко.\n- НИКОГДА не создавай сущность, пока не собраны ВСЕ обязательные поля.\n- Если данных не хватает — задавай уточняющие вопросы по одному за раз.\n- НЕ используй ID из базы данных. Спрашивай понятными пользователю названиями.\n- Для привязки к автомобилю достаточно одного госномера. Марку и модель для поиска НЕ нужно спрашивать — только госномер.\n- Для удаления — сначала уточни, какую именно запись удалить, и подтверди у пользователя.\n- Когда собраны все данные для создания — покажи пользователю итог и спроси подтверждение простым текстом, БЕЗ JSON.\n  Пример: \"Создать автомобиль Москвич 3, 2024, госномер Р392РЗ03, VIN WVGZZZ5NZLW123476?\"\n- Если пользователь ответил \"да\", \"давай\", \"подтверждаю\" или аналогично — сразу выводи JSON с действием.\n- Если пользователь ответил \"нет\" или отказался — не выводи JSON, спроси что исправить.\n- JSON выводи ТОЛЬКО когда пользователь подтвердил действие. Не выводи JSON в вопросе на подтверждение.\n- В JSON для госномера и VIN передавай значения без лишних пробелов.\n- Нормализуй названия марок и моделей автомобилей: \"лада\" → \"Lada\", \"веста\" → \"Vesta\", \"фольксваген\" → \"Volkswagen\", \"тигуан\" → \"Tiguan\", \"москвич\" → \"Москвич\", \"киа\" → \"Kia\", \"хитай\" → \"Hyundai\", \"шкода\" → \"Skoda\", \"одди\" → \"Audi\", \"бмв\" → \"BMW\", \"мерседес\" → \"Mercedes-Benz\", \"ниссан\" → \"Nissan\", \"тойота\" → \"Toyota\", \"хонда\" → \"Honda\", \"мазда\" → \"Mazda\", \"митсубиси\" → \"Mitsubishi\", \"субару\" → \"Subaru\", \"лексус\" → \"Lexus\". Если марка неизвестна — оставь как написал пользователь.\n\nОбязательные поля для создания:\n1. АВТОМОБИЛЬ (create_car): brand, model, year, vin, plate\n2. ЗАПРАВКА (create_fuel): автомобиль, volume, price, type, date\n3. ТЕХОБСЛУЖИВАНИЕ (create_maintenance): автомобиль, type, date, cost\n4. ШТРАФ (create_fine): госномер, amount, date, description (спроси \"Опишите нарушение\" — пользователь может написать статью или произвольный текст); номер постановления (bill_number) — необязателен, спроси явно; если пользователь говорит что нет или не знает — создавай без них\n\nДоступные действия (JSON в конце ответа, только после подтверждения пользователя):\n\nСоздание:\n{\"action\": \"create_car\", \"data\": {\"brand\": \"...\", \"model\": \"...\", \"year\": 2024, \"vin\": \"...\", \"plate\": \"...\"}}\n{\"action\": \"create_fuel\", \"data\": {\"car_plate\": \"...\", \"volume\": 45, \"price\": 55, \"type\": \"АИ-95\", \"date\": \"2026-06-09\"}}\n{\"action\": \"create_maintenance\", \"data\": {\"car_plate\": \"...\", \"type\": \"Замена масла\", \"date\": \"2026-06-09\", \"cost\": 5000}}\n{\"action\": \"create_fine\", \"data\": {\"car_plate\": \"...\", \"amount\": 500, \"date\": \"2026-06-09\", \"description\": \"Превышение скорости на 20 км/ч\", \"bill_number\": \"18810533260608041459\"}}\n\nРедактирование:\n{\"action\": \"update_car\", \"data\": {\"car_plate\": \"...\", \"new_plate\": \"...\", \"new_vin\": \"...\"}}\n{\"action\": \"update_fuel\", \"data\": {\"car_plate\": \"...\", \"date\": \"2026-06-09\", \"new_volume\": 50}}\n{\"action\": \"update_maintenance\", \"data\": {\"car_plate\": \"...\", \"type\": \"Замена масла\", \"date\": \"2026-06-09\", \"new_cost\": 6000}}\n{\"action\": \"update_fine\", \"data\": {\"car_plate\": \"...\", \"amount\": 500, \"date\": \"2026-06-09\", \"new_status\": \"paid\"}}\n\nУдаление (только после подтверждения пользователем):\n{\"action\": \"delete_car\", \"data\": {\"car_plate\": \"...\"}}\n{\"action\": \"delete_fuel\", \"data\": {\"car_plate\": \"...\", \"date\": \"2026-06-09\", \"volume\": 45}}\n{\"action\": \"delete_maintenance\", \"data\": {\"car_plate\": \"...\", \"type\": \"Замена масла\", \"date\": \"2026-06-09\"}}\n{\"action\": \"delete_fine\", \"data\": {\"car_plate\": \"...\", \"amount\": 500, \"date\": \"2026-06-09\"}}"
 
 // AIAction — структура действия из JSON
 type AIAction struct {
@@ -216,11 +216,12 @@ func normalizePlate(plate string) string {
 	return strings.ToUpper(re.ReplaceAllString(strings.TrimSpace(plate), ""))
 }
 
-// findCarByDetails ищет автомобиль пользователя по марке, модели и госномеру
-func (h *ChatHandler) findCarByDetails(data map[string]interface{}, userID string) (string, string) {
-	brand := getString(data, "car_brand")
-	model := getString(data, "car_model")
+// findCarByPlate ищет автомобиль пользователя по госномеру
+func (h *ChatHandler) findCarByPlate(data map[string]interface{}, userID string) (string, string) {
 	plate := normalizePlate(getString(data, "car_plate"))
+	if plate == "" {
+		return "", ""
+	}
 
 	cars, err := h.uc.Car.ListCars(userID)
 	if err != nil {
@@ -228,19 +229,9 @@ func (h *ChatHandler) findCarByDetails(data map[string]interface{}, userID strin
 	}
 
 	for _, c := range cars {
-		if brand != "" && !strings.EqualFold(c.Brand, brand) {
-			continue
+		if strings.EqualFold(normalizePlate(c.Plate), plate) {
+			return c.ID, fmt.Sprintf("%s %s (%s)", c.Brand, c.Model, c.Plate)
 		}
-		if model != "" && !strings.EqualFold(c.Model, model) {
-			continue
-		}
-		if plate != "" && !strings.EqualFold(normalizePlate(c.Plate), plate) {
-			continue
-		}
-		if brand == "" && model == "" && plate == "" {
-			continue
-		}
-		return c.ID, fmt.Sprintf("%s %s (%s)", c.Brand, c.Model, c.Plate)
 	}
 	return "", ""
 }
@@ -293,9 +284,9 @@ func (h *ChatHandler) executeCreateCar(data map[string]interface{}, userID strin
 }
 
 func (h *ChatHandler) executeCreateFuel(data map[string]interface{}, userID string) string {
-	carID, carName := h.findCarByDetails(data, userID)
+	carID, carName := h.findCarByPlate(data, userID)
 	if carID == "" {
-		return "❌ Не удалось найти автомобиль. Укажите марку, модель и госномер автомобиля."
+		return "❌ Не удалось найти автомобиль. Укажите госномер."
 	}
 
 	e := fuel.FuelEvent{
@@ -319,9 +310,9 @@ func (h *ChatHandler) executeCreateFuel(data map[string]interface{}, userID stri
 }
 
 func (h *ChatHandler) executeCreateMaintenance(data map[string]interface{}, userID string) string {
-	carID, carName := h.findCarByDetails(data, userID)
+	carID, carName := h.findCarByPlate(data, userID)
 	if carID == "" {
-		return "❌ Не удалось найти автомобиль. Укажите марку, модель и госномер автомобиля."
+		return "❌ Не удалось найти автомобиль. Укажите госномер."
 	}
 
 	e := maintenance.MaintenanceEvent{
@@ -345,9 +336,9 @@ func (h *ChatHandler) executeCreateMaintenance(data map[string]interface{}, user
 }
 
 func (h *ChatHandler) executeCreateFine(data map[string]interface{}, userID string) string {
-	carID, carName := h.findCarByDetails(data, userID)
+	carID, carName := h.findCarByPlate(data, userID)
 	if carID == "" {
-		return "❌ Не удалось найти автомобиль. Укажите марку, модель и госномер автомобиля."
+		return "❌ Не удалось найти автомобиль. Укажите госномер."
 	}
 
 	status := getString(data, "status")
@@ -355,18 +346,24 @@ func (h *ChatHandler) executeCreateFine(data map[string]interface{}, userID stri
 		status = "unpaid"
 	}
 
+	fineType := getString(data, "type")
+	if fineType == "" {
+		fineType = "Штраф"
+	}
+
 	f := fine.Fine{
 		ID:          uuid.New().String(),
 		CarID:       carID,
 		Amount:      getFloat(data, "amount"),
-		Type:        getString(data, "type"),
+		Type:        fineType,
 		Date:        getString(data, "date"),
 		Status:      status,
 		Description: getString(data, "description"),
+		BillNumber:  getString(data, "bill_number"),
 	}
 
-	if f.Amount <= 0 || f.Type == "" || f.Date == "" {
-		return "❌ Не хватает данных для создания штрафа. Укажите сумму, статью и дату."
+	if f.Amount <= 0 || f.Date == "" {
+		return "❌ Не хватает данных для создания штрафа. Укажите сумму и дату."
 	}
 
 	if err := h.uc.Fine.AddFine(f); err != nil {
@@ -378,15 +375,19 @@ func (h *ChatHandler) executeCreateFine(data map[string]interface{}, userID stri
 		statusText = "оплачен"
 	}
 
-	return fmt.Sprintf("✅ Штраф добавлен для %s: %.2f ₽ по статье %s (статус: %s) 📋", carName, f.Amount, f.Type, statusText)
+	desc := f.Description
+	if desc == "" {
+		desc = "без описания"
+	}
+	return fmt.Sprintf("✅ Штраф добавлен для %s: %.2f ₽, %s (статус: %s) 📋", carName, f.Amount, desc, statusText)
 }
 
 // ========== UPDATE ==========
 
 func (h *ChatHandler) executeUpdateCar(data map[string]interface{}, userID string) string {
-	carID, carName := h.findCarByDetails(data, userID)
+	carID, carName := h.findCarByPlate(data, userID)
 	if carID == "" {
-		return "❌ Не удалось найти автомобиль. Укажите марку, модель и госномер."
+		return "❌ Не удалось найти автомобиль. Укажите госномер."
 	}
 
 	existingCar, err := h.uc.Car.GetCar(carID)
@@ -418,7 +419,7 @@ func (h *ChatHandler) executeUpdateCar(data map[string]interface{}, userID strin
 }
 
 func (h *ChatHandler) executeUpdateFuel(data map[string]interface{}, userID string) string {
-	carID, carName := h.findCarByDetails(data, userID)
+	carID, carName := h.findCarByPlate(data, userID)
 	if carID == "" {
 		return "❌ Не удалось найти автомобиль."
 	}
@@ -466,7 +467,7 @@ func (h *ChatHandler) executeUpdateFuel(data map[string]interface{}, userID stri
 }
 
 func (h *ChatHandler) executeUpdateMaintenance(data map[string]interface{}, userID string) string {
-	carID, carName := h.findCarByDetails(data, userID)
+	carID, carName := h.findCarByPlate(data, userID)
 	if carID == "" {
 		return "❌ Не удалось найти автомобиль."
 	}
@@ -512,7 +513,7 @@ func (h *ChatHandler) executeUpdateMaintenance(data map[string]interface{}, user
 }
 
 func (h *ChatHandler) executeUpdateFine(data map[string]interface{}, userID string) string {
-	carID, carName := h.findCarByDetails(data, userID)
+	carID, carName := h.findCarByPlate(data, userID)
 	if carID == "" {
 		return "❌ Не удалось найти автомобиль."
 	}
@@ -560,9 +561,9 @@ func (h *ChatHandler) executeUpdateFine(data map[string]interface{}, userID stri
 // ========== DELETE ==========
 
 func (h *ChatHandler) executeDeleteCar(data map[string]interface{}, userID string) string {
-	carID, carName := h.findCarByDetails(data, userID)
+	carID, carName := h.findCarByPlate(data, userID)
 	if carID == "" {
-		return "❌ Не удалось найти автомобиль. Укажите марку, модель и госномер."
+		return "❌ Не удалось найти автомобиль. Укажите госномер."
 	}
 
 	if err := h.uc.Car.DeleteCar(carID, userID); err != nil {
@@ -573,7 +574,7 @@ func (h *ChatHandler) executeDeleteCar(data map[string]interface{}, userID strin
 }
 
 func (h *ChatHandler) executeDeleteFuel(data map[string]interface{}, userID string) string {
-	carID, carName := h.findCarByDetails(data, userID)
+	carID, carName := h.findCarByPlate(data, userID)
 	if carID == "" {
 		return "❌ Не удалось найти автомобиль."
 	}
@@ -606,7 +607,7 @@ func (h *ChatHandler) executeDeleteFuel(data map[string]interface{}, userID stri
 }
 
 func (h *ChatHandler) executeDeleteMaintenance(data map[string]interface{}, userID string) string {
-	carID, carName := h.findCarByDetails(data, userID)
+	carID, carName := h.findCarByPlate(data, userID)
 	if carID == "" {
 		return "❌ Не удалось найти автомобиль."
 	}
@@ -639,7 +640,7 @@ func (h *ChatHandler) executeDeleteMaintenance(data map[string]interface{}, user
 }
 
 func (h *ChatHandler) executeDeleteFine(data map[string]interface{}, userID string) string {
-	carID, carName := h.findCarByDetails(data, userID)
+	carID, carName := h.findCarByPlate(data, userID)
 	if carID == "" {
 		return "❌ Не удалось найти автомобиль."
 	}
