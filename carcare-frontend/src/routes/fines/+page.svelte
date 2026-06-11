@@ -12,7 +12,7 @@
     filteredFinesList, loadFines, createFine, editFine, removeFine
   } from '../../stores/fines';
   import type { Fine } from '../../lib/types';
-  import { fetchCars, fetchFinesBySts } from '../../lib/api';
+  import { fetchCars, importFinesBySts } from '../../lib/api';
   import type { Car } from '../../lib/types';
 
   const COLUMNS = [
@@ -264,56 +264,34 @@
     }
 
     stsLoading = true;
-    let totalFound = 0;
+    let totalAdded = 0;
     let totalSkipped = 0;
-    let totalErrors = 0;
+    let hadError = false;
 
     for (const car of carsWithSts) {
       try {
-        const result = await fetchFinesBySts(car.sts);
-        if (result.fines && result.fines.length > 0) {
-          for (const bill of result.fines) {
-            const billDate = new Date(bill.billDate).toISOString().split('T')[0];
-            try {
-              await createFine({
-                carId: car.id,
-                amount: bill.amount,
-                type: 'Госуслуги',
-                date: billDate,
-                status: bill.isPaid ? 'paid' : 'unpaid',
-                description: bill.billName || `Штраф №${bill.billNumber}`,
-                billNumber: bill.billNumber,
-              });
-              totalFound++;
-            } catch (e: unknown) {
-              const msg = e instanceof Error ? e.message : '';
-              if (msg.includes('already exists') || msg.includes('уже существует')) {
-                totalSkipped++;
-              } else {
-                totalErrors++;
-              }
-            }
-          }
-        }
+        const result = await importFinesBySts(car.id, car.sts);
+        totalAdded += result.added;
+        totalSkipped += result.skipped;
       } catch {
-        totalErrors++;
+        hadError = true;
       }
     }
 
     stsLoading = false;
 
-    let message = '';
-    if (totalFound > 0) message += `Добавлено ${totalFound} штрафов. `;
-    if (totalSkipped > 0) message += `${totalSkipped} уже были в системе. `;
-    if (totalErrors > 0) message += `${totalErrors} ошибок. `;
-
-    if (totalFound > 0) {
-      toast = { open: true, message: message.trim(), type: 'success' };
-      loadFines();
-    } else if (totalErrors > 0 && totalFound === 0) {
+    if (hadError && totalAdded === 0) {
       toast = { open: true, message: 'Не удалось проверить. Сервис временно недоступен.', type: 'error' };
+    } else if (totalAdded > 0) {
+      const parts: string[] = [`Добавлено ${totalAdded} штрафов.`];
+      if (totalSkipped > 0) parts.push(`${totalSkipped} уже были в системе.`);
+      toast = { open: true, message: parts.join(' '), type: 'success' };
+      loadFines();
     } else {
-      toast = { open: true, message: 'Штрафов по указанным СТС не найдено', type: 'info' };
+      const msg = totalSkipped > 0
+        ? `Новых штрафов нет (${totalSkipped} уже в системе).`
+        : 'Штрафов по указанным СТС не найдено.';
+      toast = { open: true, message: msg, type: 'info' };
     }
   }
 

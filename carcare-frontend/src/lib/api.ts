@@ -427,6 +427,20 @@ export async function fetchFinesBySts(sts: string) {
   return res.json();
 }
 
+export async function importFinesBySts(carId: string, sts: string): Promise<{ added: number; skipped: number }> {
+  const res = await fetch('/api/fines/import-sts', {
+    method: 'POST',
+    headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
+    credentials: 'include',
+    body: JSON.stringify({ car_id: carId, sts })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { error?: string }).error || 'Ошибка при импорте штрафов');
+  }
+  return res.json();
+}
+
 export async function fetchUsers() {
   // TODO: Implement API call to backend
   return [];
