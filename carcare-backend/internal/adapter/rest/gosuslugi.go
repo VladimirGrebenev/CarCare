@@ -2,7 +2,7 @@ package rest
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/VladimirGrebenev/CarCare-backend/internal/usecase"
@@ -39,7 +39,7 @@ func (h *ImportFinesByStsHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, `{"error":"invalid body"}`, http.StatusBadRequest)
 		return

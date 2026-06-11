@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -88,7 +88,11 @@ func (a *GosuslugiAdapter) FetchBySts(sts string) ([]usecase.GosuslugiImportBill
 	}
 	defer resp.Body.Close()
 
-	respBody, err := ioutil.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("сервис Госуслуг вернул статус %d", resp.StatusCode)
+	}
+
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка при чтении ответа: %v", err)
 	}
