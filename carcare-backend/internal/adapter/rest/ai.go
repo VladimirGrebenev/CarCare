@@ -139,7 +139,14 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.pendingActions.Delete(userID)
 			pa := pending.(pendingAction)
 			var result string
-			if pa.action == "create_fine" {
+			switch pa.action {
+			case "create_car":
+				result = h.executeCreateCar(pa.data, userID)
+			case "create_fuel":
+				result = h.executeCreateFuel(pa.data, userID)
+			case "create_maintenance":
+				result = h.executeCreateMaintenance(pa.data, userID)
+			case "create_fine":
 				result = h.executeCreateFine(pa.data, userID)
 			}
 			json.NewEncoder(w).Encode(ChatResponse{Reply: result})
@@ -228,6 +235,95 @@ func (h *ChatHandler) confirmCreateFine(data map[string]interface{}, userID stri
 	return fmt.Sprintf("Подтвердите создание штрафа:\n• Автомобиль: %s\n• Дата: %s\n• Сумма: %.0f ₽\n• Описание: %s\n• Номер постановления: %s\n\nВсё верно? (да/нет)", carName, displayDate, amount, description, billText)
 }
 
+func (h *ChatHandler) confirmCreateCar(data map[string]interface{}, userID string) string {
+	brand := getString(data, "brand")
+	model := getString(data, "model")
+	year := getInt(data, "year")
+	vin := getString(data, "vin")
+	plate := normalizePlate(getString(data, "plate"))
+
+	if brand == "" {
+		return "Укажите марку автомобиля."
+	}
+	if model == "" {
+		return "Укажите модель автомобиля."
+	}
+	if year <= 0 {
+		return "Укажите год выпуска автомобиля."
+	}
+	if vin == "" {
+		return "Укажите VIN-номер автомобиля."
+	}
+	if plate == "" {
+		return "Укажите госномер автомобиля."
+	}
+
+	h.pendingActions.Store(userID, pendingAction{action: "create_car", data: data})
+	return fmt.Sprintf("Подтвердите добавление автомобиля:\n• Марка и модель: %s %s\n• Год выпуска: %d\n• Госномер: %s\n• VIN: %s\n\nВсё верно? (да/нет)", brand, model, year, plate, vin)
+}
+
+func (h *ChatHandler) confirmCreateFuel(data map[string]interface{}, userID string) string {
+	_, carName := h.findCarByPlate(data, userID)
+	if carName == "" {
+		return "❌ Не удалось найти автомобиль. Укажите госномер."
+	}
+
+	volume := getFloat(data, "volume")
+	price := getFloat(data, "price")
+	fuelType := getString(data, "type")
+	date := getString(data, "date")
+
+	if volume <= 0 {
+		return "Укажите количество литров."
+	}
+	if price <= 0 {
+		return "Укажите цену за литр."
+	}
+	if fuelType == "" {
+		return "Укажите тип топлива (например: АИ-95, дизель)."
+	}
+	if date == "" {
+		return "Укажите дату заправки."
+	}
+
+	displayDate := date
+	if t, err := time.Parse("2006-01-02", date); err == nil {
+		displayDate = t.Format("02.01.2006")
+	}
+
+	h.pendingActions.Store(userID, pendingAction{action: "create_fuel", data: data})
+	return fmt.Sprintf("Подтвердите добавление заправки:\n• Автомобиль: %s\n• Дата: %s\n• Объём: %.1f л\n• Тип топлива: %s\n• Цена: %.2f ₽/л\n• Итого: %.2f ₽\n\nВсё верно? (да/нет)", carName, displayDate, volume, fuelType, price, volume*price)
+}
+
+func (h *ChatHandler) confirmCreateMaintenance(data map[string]interface{}, userID string) string {
+	_, carName := h.findCarByPlate(data, userID)
+	if carName == "" {
+		return "❌ Не удалось найти автомобиль. Укажите госномер."
+	}
+
+	workType := getString(data, "type")
+	date := getString(data, "date")
+	cost := getFloat(data, "cost")
+
+	if workType == "" {
+		return "Укажите вид работ (например: замена масла)."
+	}
+	if date == "" {
+		return "Укажите дату проведения работ."
+	}
+	if cost <= 0 {
+		return "Укажите стоимость работ."
+	}
+
+	displayDate := date
+	if t, err := time.Parse("2006-01-02", date); err == nil {
+		displayDate = t.Format("02.01.2006")
+	}
+
+	h.pendingActions.Store(userID, pendingAction{action: "create_maintenance", data: data})
+	return fmt.Sprintf("Подтвердите добавление техобслуживания:\n• Автомобиль: %s\n• Вид работ: %s\n• Дата: %s\n• Стоимость: %.0f ₽\n\nВсё верно? (да/нет)", carName, workType, displayDate, cost)
+}
+
 // tryExecuteAction ищет JSON-блок с действием в ответе AI и выполняет его
 func (h *ChatHandler) tryExecuteAction(response string, userID string) string {
 	start := strings.Index(response, "{\"action\":")
@@ -247,11 +343,11 @@ func (h *ChatHandler) tryExecuteAction(response string, userID string) string {
 
 	switch action.Action {
 	case "create_car":
-		return h.executeCreateCar(action.Data, userID)
+		return h.confirmCreateCar(action.Data, userID)
 	case "create_fuel":
-		return h.executeCreateFuel(action.Data, userID)
+		return h.confirmCreateFuel(action.Data, userID)
 	case "create_maintenance":
-		return h.executeCreateMaintenance(action.Data, userID)
+		return h.confirmCreateMaintenance(action.Data, userID)
 	case "create_fine":
 		return h.confirmCreateFine(action.Data, userID)
 	case "update_car":
