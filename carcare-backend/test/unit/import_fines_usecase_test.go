@@ -83,3 +83,21 @@ func TestImportFinesBySts_EmptyBills_ReturnsZero(t *testing.T) {
 		t.Errorf("expected 0/0, got %d/%d", result.Added, result.Skipped)
 	}
 }
+
+func TestImportFinesBySts_EmptyBillNumber_IsSkipped(t *testing.T) {
+	uc := usecase.ImportFinesByStsUsecase{Repo: &mockFineRepo{}}
+	fetcher := &stubFetcher{bills: []usecase.GosuslugiImportBill{
+		{BillNumber: "", BillDate: time.Now().UnixMilli(), Amount: 100, BillName: "Без номера", IsPaid: false},
+	}}
+
+	result, err := uc.Execute("car-1", fetcher, "99АА123456")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Added != 0 {
+		t.Errorf("expected 0 added, got %d", result.Added)
+	}
+	if result.Skipped != 1 {
+		t.Errorf("expected 1 skipped, got %d", result.Skipped)
+	}
+}

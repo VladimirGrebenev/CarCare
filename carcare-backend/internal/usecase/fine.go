@@ -7,6 +7,8 @@ import (
 	"github.com/VladimirGrebenev/CarCare-backend/internal/domain/fine"
 )
 
+const fineTypeGosuslugi = "Госуслуги"
+
 type AddFineUsecase struct {
 	Repo fine.Repository
 }
@@ -80,15 +82,18 @@ func (uc *ImportFinesByStsUsecase) Execute(carID string, fetcher GosuslugiFetche
 
 	var result ImportResult
 	for _, bill := range bills {
-		if bill.BillNumber != "" {
-			exists, err := uc.Repo.CheckFineExistsByBillNumber(carID, bill.BillNumber)
-			if err != nil {
-				return result, err
-			}
-			if exists {
-				result.Skipped++
-				continue
-			}
+		if bill.BillNumber == "" {
+			result.Skipped++
+			continue
+		}
+
+		exists, err := uc.Repo.CheckFineExistsByBillNumber(carID, bill.BillNumber)
+		if err != nil {
+			return result, err
+		}
+		if exists {
+			result.Skipped++
+			continue
 		}
 
 		billDate := time.UnixMilli(bill.BillDate).Format("2006-01-02")
@@ -101,7 +106,7 @@ func (uc *ImportFinesByStsUsecase) Execute(carID string, fetcher GosuslugiFetche
 			ID:          uuid.New().String(),
 			CarID:       carID,
 			Amount:      bill.Amount,
-			Type:        "Госуслуги",
+			Type:        fineTypeGosuslugi,
 			Date:        billDate,
 			Status:      status,
 			Description: bill.BillName,
